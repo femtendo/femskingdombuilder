@@ -4,11 +4,14 @@ logs/
 crash-reports/
 usercache.json
 usernamecache.json
+.mixin.out/
+debug.log
 
 # --- Gradle ---
 .gradle/
 build/
 out/
+local.properties
 
 # --- macOS ---
 .DS_Store
@@ -19,7 +22,7 @@ out/
 .vscode/
 *.code-workspace
 
-# --- Eclipse (Forge generates these by default) ---
+# --- Eclipse ---
 .eclipse/
 bin/
 *.launch
@@ -27,7 +30,7 @@ bin/
 .project
 .settings/
 
-# --- IntelliJ IDEA (In case you switch IDEs) ---
+# --- IntelliJ IDEA ---
 .idea/
 *.iml
 *.iws
@@ -37,6 +40,8 @@ bin/
 *.log
 *.jar
 *.war
+# Essential for Gradle projects:
+!gradle/wrapper/gradle-wrapper.jar
 
 # --- Vibe Kanban ---
 kan-ban/
