@@ -1,0 +1,6 @@
+# macOS metadata
+.DS_Store
+
+# Vibe Kanban internal folders
+kan-ban/
+.vibe-kanban-workspaces/
