@@ -39,7 +39,7 @@ Implement the `KingdomVillagerEntity`, a custom Minecraft NPC for version 1.21.1
 - [ ] **0600 (Tick 0):** Wake up / Commute.
 - [ ] **0700 (Tick 1000):** Work (Idle/Wander).
 - [ ] **1700 (Tick 11000):** Social Hour (Bell).
-- [ ] **1800 (Tick 12000):** Sleep (Home).
+- [ ] **1800 (Tick 13000):** Sleep (Home).
 
 ### 5. Strict Exclusions & Quality Control
 - [x] Remove/Exclude Iron Golem logic.
