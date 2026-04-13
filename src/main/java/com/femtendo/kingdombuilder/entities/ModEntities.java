@@ -1,6 +1,6 @@
 package com.femtendo.kingdombuilder.entities;
 
-import com.femtendo.kingdombuilder.kingdombuilder;
+import com.femtendo.kingdombuilder.KingdomBuilder;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraftforge.eventbus.api.IEventBus;
