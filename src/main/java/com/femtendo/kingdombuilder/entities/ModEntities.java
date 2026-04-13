@@ -1,6 +1,6 @@
-package com.femtendo.femskingdombuilder.entities;
+package com.femtendo.kingdombuilder.entities;
 
-import com.femtendo.femskingdombuilder.FemsKingdomBuilder;
+import com.femtendo.kingdombuilder.kingdombuilder;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraftforge.eventbus.api.IEventBus;
@@ -10,13 +10,13 @@ import net.minecraftforge.registries.RegistryObject;
 
 public class ModEntities {
     public static final DeferredRegister<EntityType<?>> ENTITY_TYPES =
-            DeferredRegister.create(ForgeRegistries.ENTITY_TYPES, FemsKingdomBuilder.MODID);
+            DeferredRegister.create(ForgeRegistries.ENTITY_TYPES, KingdomBuilder.MODID);
 
     public static final RegistryObject<EntityType<KingdomVillagerEntity>> KINGDOM_VILLAGER =
             ENTITY_TYPES.register("kingdom_villager",
                     () -> EntityType.Builder.of(KingdomVillagerEntity::new, MobCategory.CREATURE)
                             .sized(0.6f, 1.8f)
-                            .build(FemsKingdomBuilder.MODID + ":kingdom_villager"));
+                            .build(KingdomBuilder.MODID + ":kingdom_villager"));
 
 
     public static void register(IEventBus eventBus) {

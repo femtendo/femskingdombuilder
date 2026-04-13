@@ -1,4 +1,4 @@
-package com.femtendo.femskingdombuilder.entities;
+package com.femtendo.kingdombuilder.entities;
 
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.AgeableMob;
