@@ -2,7 +2,7 @@
 <launchConfiguration type="org.eclipse.jdt.launching.localJavaApplication">
   <stringAttribute key="org.eclipse.jdt.launching.PROJECT_ATTR" value="fems_kingdombuilder-femskingdombuilder"/>
   <stringAttribute key="org.eclipse.jdt.launching.MAIN_TYPE" value="net.minecraftforge.bootstrap.ForgeBootstrap"/>
-  <stringAttribute key="org.eclipse.jdt.launching.VM_ARGUMENTS" value="-Dforge.logging.console.level=debug -Dforge.logging.markers=REGISTRIES -Dforge.enabledGameTestNamespaces=examplemod -Dforge.enableGameTest=true -Djava.net.preferIPv6Addresses=system"/>
+  <stringAttribute key="org.eclipse.jdt.launching.VM_ARGUMENTS" value="-Dforge.logging.console.level=debug -Dforge.logging.markers=REGISTRIES -Dforge.enabledGameTestNamespaces=kingdombuilder -Dforge.enableGameTest=true -Djava.net.preferIPv6Addresses=system"/>
   <stringAttribute key="org.eclipse.jdt.launching.PROGRAM_ARGUMENTS" value="--launchTarget forge_userdev_server --gameDir . --nogui"/>
   <stringAttribute key="org.eclipse.jdt.launching.WORKING_DIRECTORY" value="/Users/studio/Documents/femskingdombuilder/run"/>
   <mapAttribute key="org.eclipse.debug.core.environmentVariables">
