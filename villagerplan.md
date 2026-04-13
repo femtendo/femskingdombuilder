@@ -19,9 +19,9 @@ Implement the `KingdomVillagerEntity`, a custom Minecraft NPC for version 1.21.1
 ## Roadmap & Features
 
 ### 1. Core Entity & Registry
-- [ ] Create `KingdomVillagerEntity` class.
-- [ ] Register entity type and Spawn Egg.
-- [ ] Set up player hitboxes and physics.
+- [x] Create `KingdomVillagerEntity` class.
+- [x] Register entity type and Spawn Egg.
+- [x] Set up player hitboxes and physics.
 
 ### 2. Player-Like Model & Skin System
 - [ ] Implement bipedal model and animations.
@@ -51,3 +51,11 @@ Implement the `KingdomVillagerEntity`, a custom Minecraft NPC for version 1.21.1
 
 ## Development Notes & Progress
 *To be updated as tasks are completed.*
+
+### Task 1: Core Entity & Registry - Completed by Exec Agent
+
+**Summary:** Created the `KingdomVillagerEntity` class, extending `AgeableMob`. Registered the entity and its corresponding spawn egg using `DeferredRegister`. The entity has standard player physics and hitboxes.
+
+**Technical Notes/Hurdles:** No major hurdles. The Forge registration system is straightforward. I've set the base attributes for health and movement speed. The entity currently has basic AI goals (wander, look at player).
+
+**Next Agent Pointers:** The next step is to implement the player-like model and skin system. You'll need to create a new renderer for the `KingdomVillagerEntity` and override the default `AgeableMob` renderer. The renderer should use the standard player model. You will also need to implement the logic to randomly select a skin from the `assets/femskingdombuilder/textures/entity/kingdom_villager` directory.
