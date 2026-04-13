@@ -9,6 +9,7 @@ debug.log
 
 # --- Gradle ---
 .gradle/
+.gradle/8.12.1/
 build/
 out/
 local.properties
