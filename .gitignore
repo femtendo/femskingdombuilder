@@ -1,6 +1,43 @@
-# macOS metadata
-.DS_Store
+# --- Minecraft Forge ---
+run/
+logs/
+crash-reports/
+usercache.json
+usernamecache.json
 
-# Vibe Kanban internal folders
+# --- Gradle ---
+.gradle/
+build/
+out/
+
+# --- macOS ---
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# --- VS Code ---
+.vscode/
+*.code-workspace
+
+# --- Eclipse (Forge generates these by default) ---
+.eclipse/
+bin/
+*.launch
+.classpath
+.project
+.settings/
+
+# --- IntelliJ IDEA (In case you switch IDEs) ---
+.idea/
+*.iml
+*.iws
+
+# --- Java ---
+*.class
+*.log
+*.jar
+*.war
+
+# --- Vibe Kanban ---
 kan-ban/
 .vibe-kanban-workspaces/
