@@ -1,46 +1,44 @@
 
-Source installation information for modders
--------------------------------------------
-This code follows the Minecraft Forge installation methodology. It will apply
-some small patches to the vanilla MCP source code, giving you and it access 
-to some of the data and functions you need to build a successful mod.
 
-Note also that the patches are built against "un-renamed" MCP source code (aka
-SRG Names) - this means that you will not be able to read them directly against
-normal code.
 
-Setup Process:
-==============================
+mc-npc-mod: Expanding Kingdom Builder
+Project Description
 
-Step 1: Open your command-line and browse to the folder where you extracted the zip file.
+The
+mc-npc-mod
+introduces a new way to make Minecraft feel more alive
+.
+It overhauls village mechanics to facilitate the construction of an expanding kingdom, shifting the gameplay from a tedious babysitting effort to a comprehensive management simulation
+.
+Villages generate in the wild with new villagers and customizable housing buildings
+.
 
-Step 2: You're left with a choice.
-If you prefer to use Eclipse:
-1. Run the following command: `./gradlew genEclipseRuns`
-2. Open Eclipse, Import > Existing Gradle Project > Select Folder 
-   or run `gradlew eclipse` to generate the project.
-
-If you prefer to use IntelliJ:
-1. Open IDEA, and import project.
-2. Select your build.gradle file and have it import.
-3. Run the following command: `./gradlew genIntellijRuns`
-4. Refresh the Gradle Project in IDEA if required.
-
-If at any point you are missing libraries in your IDE, or you've run into problems you can 
-run `gradlew --refresh-dependencies` to refresh the local cache. `gradlew clean` to reset everything 
-(this does not affect your code) and then start the process again.
-
-Mapping Names:
-=============================
-By default, the MDK is configured to use the official mapping names from Mojang for methods and fields 
-in the Minecraft codebase. These names are covered by a specific license. All modders should be aware of this
-license, if you do not agree with it you can change your mapping names to other crowdsourced names in your 
-build.gradle. For the latest license text, refer to the mapping file itself, or the reference copy here:
-https://github.com/MinecraftForge/MCPConfig/blob/master/Mojang.md
-
-Additional Resources: 
-=========================
-Community Documentation: https://docs.minecraftforge.net/en/latest/gettingstarted/
-LexManos' Install Video: https://youtu.be/8VEdtQLuLO0
-Forge Forums: https://forums.minecraftforge.net/
-Forge Discord: https://discord.minecraftforge.net/
+Players can begin their kingdom by placing a
+Treasury Block
+, which opens a GUI to manage villager requests, physical storage, total villager lists, and kingdom settings
+.
+Potential Features
+Autonomous Village and Kingdom Expansion
+Customizable Villagers: Villagers use "New" villager entities with player bodies and configurable skins loaded from a drag-and-drop folder.
+Specialized Villager Jobs: Villagers have defined types, such as miners, loggers, and fishermen, each corresponding to unique utility buildings.
+Custom Building Templates: All roads, housing, and utility buildings are customizable via building data files that can be added or removed. Players can generate their own building templates using an easy, visual in-game tool and command.
+Automatic Construction: Villagers automatically construct roads, housing, and utility buildings when the necessary resources are deposited into the village chest.
+Villager Requests: Villagers actively make requests for buildings, such as new homes if they are homeless or a new utility building if they are jobless.
+Job Mechanics and Simulation
+Zoning Tool: Players use a Zoning tool to manually designate chunks for autonomous villager construction and work.
+Anchor & Simulation Model: The Utility Building Block acts as the job manager, simulating work when the player is away.
+Loaded State: The NPC is spawned and pathfinds between the Utility Building and the designated Zone, performing visual tasks (e.g., breaking blocks, swinging tools).
+Unloaded State: When the player returns, the Utility Building calculates the resource generation based on time passed and the villager's WorkRate, instantly adding resources to the Kingdom Treasury.
+Job-Specific World Impact:
+Farmer: Automatically tills land, plants crops, and harvests yields in Agricultural Zones. It includes hooks for compatibility with other farming mods.
+Quarryman: Physically removes blocks from the world in the Loaded state or generates a Cobblestone/Ore yield based on the zone's depth in the Passive state (Mining Zones).
+Lumberjack: Chops down logs and automatically replants saplings to ensure sustainable forestry (Forestry Zones).
+Gameplay Loop and Progression
+NPC Schedule: Villagers follow a strict daily clock to make the world feel alive:
+0600 - 0700: Commute to their Utility Building.
+0700 - 1700: "On the Clock" work within their designated zone.
+1700 - 1800: Social Hour near the village town square.
+1800+: Return to their home and lock their claimed bed.
+Funding Loop: Villagers "request" tools via the Treasury GUI. If the Treasury is out of necessary tools, the worker will stop performing their job, creating a gameplay loop that requires player funding.
+Leveling System: Villagers gain a higher "WorkRate" as they work, allowing high-level (Master) villagers to yield double the resources compared to a Novice.
+Environmental Management: Zones can become "depleted" by job-specific work, requiring the player to use the Zoning tool to manage and move workers to new resource areas.
