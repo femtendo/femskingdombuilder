@@ -20,7 +20,7 @@ import org.slf4j.Logger;
 
 @Mod(KingdomBuilder.MODID)
 public class KingdomBuilder {
-    public static final String MODID = "KingdomBuilder";
+    public static final String MODID = "kingdombuilder";
     private static final Logger LOGGER = LogUtils.getLogger();
 
     public KingdomBuilder() {
