@@ -1,21 +1,34 @@
 package com.femtendo.kingdombuilder.entities.ai;
 
+import java.util.Optional;
+
 import com.femtendo.kingdombuilder.entities.KingdomVillagerEntity;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.mojang.datafixers.util.Pair;
+
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.ai.Brain;
-import net.minecraft.world.entity.ai.behavior.*;
+import net.minecraft.world.entity.ai.behavior.AcquirePoi;
+import net.minecraft.world.entity.ai.behavior.DoNothing;
+import net.minecraft.world.entity.ai.behavior.InteractWith;
+import net.minecraft.world.entity.ai.behavior.InteractWithDoor;
+import net.minecraft.world.entity.ai.behavior.LookAtTargetSink;
+import net.minecraft.world.entity.ai.behavior.MoveToTargetSink;
+import net.minecraft.world.entity.ai.behavior.RandomStroll;
+import net.minecraft.world.entity.ai.behavior.RunOne;
+import net.minecraft.world.entity.ai.behavior.SetWalkTargetFromBlockMemory;
+import net.minecraft.world.entity.ai.behavior.Swim;
+import net.minecraft.world.entity.ai.behavior.VillagerGoalPackages;
+import net.minecraft.world.entity.ai.behavior.VillagerPanicTrigger;
+import net.minecraft.world.entity.ai.behavior.WakeUp;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
-import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.entity.ai.village.poi.PoiTypes;
+import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.entity.npc.VillagerProfession;
-import java.util.Optional;
 import net.minecraft.world.entity.schedule.Activity;
 import net.minecraft.world.entity.schedule.Schedule;
 import net.minecraft.world.entity.schedule.ScheduleBuilder;
-import net.minecraft.world.entity.Mob;
 
 // POINTER: This class contains the core AI logic for our villager. We are mimicking the vanilla
 // villager AI structure by creating "packages" of behaviors for each activity.

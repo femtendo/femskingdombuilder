@@ -2,8 +2,8 @@ package com.femtendo.kingdombuilder.items;
 
 import com.femtendo.kingdombuilder.KingdomBuilder;
 import com.femtendo.kingdombuilder.entities.ModEntities;
+
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.SpawnEggItem;
 import net.minecraftforge.common.ForgeSpawnEggItem;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.registries.DeferredRegister;

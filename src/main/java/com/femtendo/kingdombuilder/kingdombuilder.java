@@ -30,8 +30,9 @@ public class KingdomBuilder {
     public static final String MODID = "kingdombuilder";
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    public KingdomBuilder() {
-        IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
+    // The context is now injected directly into the constructor
+    public KingdomBuilder(FMLJavaModLoadingContext context) {
+        IEventBus modEventBus = context.getModEventBus();
 
         modEventBus.addListener(this::commonSetup);
 
@@ -57,7 +58,6 @@ public class KingdomBuilder {
         }
     }
 
-
     private void commonSetup(final FMLCommonSetupEvent event) {
 
     }
@@ -71,7 +71,6 @@ public class KingdomBuilder {
     public void entityAttributeEvent(EntityAttributeCreationEvent event) {
         event.put(ModEntities.KINGDOM_VILLAGER.get(), KingdomVillagerEntity.createAttributes().build());
     }
-
 
     @SubscribeEvent
     public void onServerStarting(ServerStartingEvent event) {
