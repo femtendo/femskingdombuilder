@@ -216,3 +216,7 @@ sourceSets.each {
     it.output.resourcesDir = dir
     it.java.destinationDirectory = dir
 }
+task runDump(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.femtendo.kingdombuilder.entities.ai.DumpGoalPackageTest'
+}

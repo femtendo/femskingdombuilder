@@ -14,6 +14,7 @@ import net.minecraft.world.entity.ai.Brain;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.gossip.GossipContainer;
+import net.minecraft.world.entity.ai.navigation.GroundPathNavigation;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.sensing.Sensor;
 import net.minecraft.world.entity.ai.sensing.SensorType;
@@ -51,7 +52,11 @@ public class KingdomVillagerEntity extends Villager {
             MemoryModuleType.WALK_TARGET,
             MemoryModuleType.CANT_REACH_WALK_TARGET_SINCE,
             MemoryModuleType.PATH,
-            MemoryModuleType.INTERACTION_TARGET
+            MemoryModuleType.INTERACTION_TARGET,
+            MemoryModuleType.DOORS_TO_CLOSE,
+            MemoryModuleType.LAST_SLEPT,
+            MemoryModuleType.LAST_WOKEN,
+            MemoryModuleType.NEAREST_BED
     );
 
     public static final List<SensorType<? extends Sensor<? super Villager>>> SENSOR_TYPES = ImmutableList.of(
@@ -92,8 +97,10 @@ public class KingdomVillagerEntity extends Villager {
     public KingdomVillagerEntity(EntityType<? extends Villager> p_35262_, Level p_35263_) {
         super(p_35262_, p_35263_);
         this.setVillagerData(this.getVillagerData().setProfession(VillagerProfession.NONE));
-        // POINTER: We must set a schedule for the brain to know which activities to run at which time.
-        this.getBrain().setSchedule(Schedule.VILLAGER_DEFAULT);
+        // POINTER: We set the custom Kingdom schedule for the brain to know which activities to run at which time.
+        this.getBrain().setSchedule(KingdomVillagerAi.KINGDOM_SCHEDULE);
+        // POINTER: Required for the entity to pathfind through doors
+        ((GroundPathNavigation) this.getNavigation()).setCanOpenDoors(true);
     }
 
     // POINTER: This is the core of the new AI system. We are creating a Brain with specific memories and sensors.
@@ -125,6 +132,8 @@ public class KingdomVillagerEntity extends Villager {
     @Override
     protected void customServerAiStep() {
         this.level().getProfiler().push("kingdomVillagerBrain");
+        // POINTER: Ensure the brain updates its active activity according to our custom KINGDOM_SCHEDULE
+        this.getBrain().updateActivityFromSchedule(this.level().getDayTime(), this.level().getGameTime());
         this.getBrain().tick((ServerLevel)this.level(), this);
         this.level().getProfiler().pop();
         super.customServerAiStep();
