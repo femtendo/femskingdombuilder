@@ -16,19 +16,24 @@ public class KingdomVillagerScreen extends AbstractContainerScreen<KingdomVillag
     public KingdomVillagerScreen(KingdomVillagerMenu pMenu, Inventory pPlayerInventory, Component pTitle) {
         super(pMenu, pPlayerInventory, pTitle);
         // Standard inventory sizes
-        this.imageWidth = 176;
-        this.imageHeight = 166;
+        this.imageWidth = 174;
+        this.imageHeight = 174;
     }
 
     @Override
     protected void init() {
         super.init();
-        // Clear standard titles to handle them manually, or adjust standard offsets
-        this.titleLabelX = (this.imageWidth - this.font.width(this.title)) / 2;
-        this.titleLabelY = 6;
+        // --- 1. THE MAIN TITLE ("Kingdom Villager") ---
+        // X = Horizontal position. Right now it calculates the exact center of the GUI.
+        this.titleLabelX = 6;
+        // Y = Vertical position. Increase this to move the text DOWN.
+        this.titleLabelY = 6; 
         
+        // --- 2. THE INVENTORY TITLE ("Inventory") ---
+        // X = Horizontal position. Distance from the left edge of the GUI box.
         this.inventoryLabelX = 8;
-        this.inventoryLabelY = 73; // Right above player inventory which starts at 84
+        // Y = Vertical position. Increase this to move the text DOWN.
+        this.inventoryLabelY = 82; 
     }
 
     @Override
@@ -38,11 +43,29 @@ public class KingdomVillagerScreen extends AbstractContainerScreen<KingdomVillag
         this.renderTooltip(pGuiGraphics, pMouseX, pMouseY);
     }
 
-    @Override
+   @Override
     protected void renderLabels(GuiGraphics pGuiGraphics, int pMouseX, int pMouseY) {
-        // POINTER: Custom title rendering for cleaner UI instead of standard abstract container screen rendering
-        pGuiGraphics.drawString(this.font, Component.literal("Kingdom Villager"), this.titleLabelX, this.titleLabelY, 4210752, false);
-        pGuiGraphics.drawString(this.font, Component.literal("Inventory"), this.inventoryLabelX, this.inventoryLabelY, 4210752, false);
+        // 1. Save the standard rendering state
+        pGuiGraphics.pose().pushPose(); 
+        
+        // 2. Define your global text scale (0.8F = 80%)
+        float textScale = 0.8F; 
+        pGuiGraphics.pose().scale(textScale, textScale, 1.0F); 
+        
+        // 3. Convert coordinates for the Main Title
+        int scaledTitleX = (int) (this.titleLabelX / textScale);
+        int scaledTitleY = (int) (this.titleLabelY / textScale);
+        
+        // 4. Convert coordinates for the Inventory Title
+        int scaledInvX = (int) (this.inventoryLabelX / textScale);
+        int scaledInvY = (int) (this.inventoryLabelY / textScale);
+        
+        // 5. Draw BOTH strings using the scaled graphics engine
+        pGuiGraphics.drawString(this.font, Component.literal("Kingdom Villager"), scaledTitleX, scaledTitleY, 4210752, false);
+        pGuiGraphics.drawString(this.font, Component.literal("Inventory"), scaledInvX, scaledInvY, 4210752, false);
+        
+        // 6. Restore the engine back to standard 1.0 scale for drawing items
+        pGuiGraphics.pose().popPose(); 
     }
 
     @Override
@@ -53,8 +76,8 @@ public class KingdomVillagerScreen extends AbstractContainerScreen<KingdomVillag
         int x = (this.width - this.imageWidth) / 2;
         int y = (this.height - this.imageHeight) / 2;
         
-        // POINTER: If texture is 357x337, but we want 176x166, we use the blit overload 
-        // that specifies texture size to scale it correctly instead of assuming 256x256.
-        pGuiGraphics.blit(TEXTURE, x, y, 0, 0, this.imageWidth, this.imageHeight, 357, 337);
+        // This longer overload forces the engine to read all 357x337 source pixels 
+        // and squish them into the 176x166 screen box.
+        pGuiGraphics.blit(TEXTURE, x, y, this.imageWidth, this.imageHeight, 0.0F, 0.0F, 357, 337, 357, 337);
     }
 }

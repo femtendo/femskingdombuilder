@@ -24,7 +24,7 @@ public class KingdomVillagerMenu extends AbstractContainerMenu {
 
         // 1. Add the 1 "Tool/Weapon" slot wrapping MAINHAND (Slot 0)
         // POINTER: Placed prominently at top-center.
-        this.addSlot(new Slot(new SimpleContainer(1), 0, 80, 18) {
+        this.addSlot(new Slot(new SimpleContainer(1), 0, 80, 37) {
             @Override
             public ItemStack getItem() {
                 return villager.getItemBySlot(EquipmentSlot.MAINHAND);
@@ -79,7 +79,7 @@ public class KingdomVillagerMenu extends AbstractContainerMenu {
         // 2. Add the 8 generic inventory slots (Slots 1 - 8)
         // POINTER: Row directly below Tool slot
         for (int i = 0; i < 8; ++i) {
-            this.addSlot(new Slot(this.genericInventory, i, 16 + i * 18, 44) {
+            this.addSlot(new Slot(this.genericInventory, i, 8 + i * 18, 65) {
                 @Override
                 public boolean mayPlace(ItemStack stack) {
                     return true;
@@ -89,13 +89,18 @@ public class KingdomVillagerMenu extends AbstractContainerMenu {
 
         // 3. Add Player Inventory and Hotbar (Slots 9 - 44)
         // POINTER: Standard bottom-half configuration
+        // Change the addSlot line inside the double loop:
         for (int i = 0; i < 3; ++i) {
             for (int j = 0; j < 9; ++j) {
-                this.addSlot(new Slot(playerInventory, j + i * 9 + 9, 8 + j * 18, 84 + i * 18));
+                this.addSlot(new Slot(playerInventory, j + i * 9 + 9, 7 + j * 18, 89 + i * 18));
             }
         }
+        
+        // 4. Add the Hotbar
         for (int i = 0; i < 9; ++i) {
-            this.addSlot(new Slot(playerInventory, i, 8 + i * 18, 142));
+            // The last number is the Y-coordinate. 
+            // Decrease this number to move the hotbar UP.
+            this.addSlot(new Slot(playerInventory, i, 8 + i * 18, 150));
         }
     }
 
