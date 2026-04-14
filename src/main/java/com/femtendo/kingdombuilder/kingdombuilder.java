@@ -38,6 +38,7 @@ public class KingdomBuilder {
 
         ModEntities.register(modEventBus);
         ModItems.register(modEventBus);
+        com.femtendo.kingdombuilder.inventory.ModMenus.register(modEventBus);
 
         MinecraftForge.EVENT_BUS.register(this);
 
@@ -83,6 +84,10 @@ public class KingdomBuilder {
         public static void onClientSetup(FMLClientSetupEvent event) {
             // POINTER: Load external skins from the config directory on the client.
             com.femtendo.kingdombuilder.client.ClientSkinManager.loadExternalSkins();
+            
+            event.enqueueWork(() -> {
+                net.minecraft.client.gui.screens.MenuScreens.register(com.femtendo.kingdombuilder.inventory.ModMenus.KINGDOM_VILLAGER_MENU.get(), com.femtendo.kingdombuilder.client.gui.screens.inventory.KingdomVillagerScreen::new);
+            });
         }
 
         @SubscribeEvent

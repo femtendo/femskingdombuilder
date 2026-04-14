@@ -38,6 +38,11 @@ import net.minecraft.world.item.trading.MerchantOffers;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraftforge.fml.loading.FMLPaths;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.SimpleContainer;
+import net.minecraft.world.entity.EquipmentSlot;
 
 public class KingdomVillagerEntity extends Villager {
 
@@ -139,6 +144,32 @@ public class KingdomVillagerEntity extends Villager {
         super.defineSynchedData(builder);
         builder.define(DATA_SKIN_ID, "steve");
     }
+
+    @Override
+    protected void dropEquipment() {
+        super.dropEquipment();
+        // POINTER: The generic inventory drops are handled in dropCustomDeathLoot or here.
+        // We drop them here to ensure they drop consistently with equipment.
+        SimpleContainer inventory = this.getInventory();
+        for (int i = 0; i < inventory.getContainerSize(); i++) {
+            ItemStack stack = inventory.getItem(i);
+            if (!stack.isEmpty()) {
+                // Ensure generic inventory does NOT contain the main hand item to avoid duplication.
+                // The sync logic ensures MAINHAND is not actually in the generic inventory, 
+                // but we double-check just in case.
+                if (!ItemStack.matches(stack, this.getItemBySlot(EquipmentSlot.MAINHAND))) {
+                    this.spawnAtLocation(stack);
+                }
+                inventory.setItem(i, ItemStack.EMPTY);
+            }
+        }
+    }
+
+    @Override
+    protected void dropCustomDeathLoot(ServerLevel pLevel, DamageSource pSource, boolean pRecentlyHit) {
+        super.dropCustomDeathLoot(pLevel, pSource, pRecentlyHit);
+        // POINTER: If any other custom drops (like job-specific drops) are needed later, they go here.
+    }
     
     @Override
     public void setOffers(MerchantOffers p_35414_) {
@@ -193,7 +224,14 @@ public class KingdomVillagerEntity extends Villager {
 
     @Override
     public net.minecraft.world.InteractionResult mobInteract(net.minecraft.world.entity.player.Player pPlayer, net.minecraft.world.InteractionHand pHand) {
-        return net.minecraft.world.InteractionResult.PASS;
+        if (!this.level().isClientSide() && pPlayer instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+            // POINTER: Open the Kingdom Villager UI when right-clicked.
+            // We pass the entity ID to the client via the extra data buffer so it can resolve the entity.
+            serverPlayer.openMenu(new net.minecraft.world.SimpleMenuProvider((windowId, playerInv, player) -> {
+                return new com.femtendo.kingdombuilder.inventory.KingdomVillagerMenu(windowId, playerInv, this);
+            }, this.getDisplayName()), buf -> buf.writeInt(this.getId()));
+        }
+        return net.minecraft.world.InteractionResult.sidedSuccess(this.level().isClientSide());
     }
 
     @Override

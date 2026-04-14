@@ -108,4 +108,30 @@ Modular job system to add more tools (axes for lumberjacks, hoes for farmers) wi
   - If no recognized tag, switch to `CivilianJob`.
 
 ## Dev Notes & Progress
-- *Currently in concepting phase. No implementation has begun.*
+
+Architect the Inventory and GUI Sync System - Completed by Exec Agent
+
+Summary: Implemented the `KingdomVillagerMenu` with an 8-slot generic inventory mapping to the villager's internal `SimpleContainer` and a 1-slot Tool/Weapon slot dynamically wrapping `EquipmentSlot.MAINHAND`. Updated `KingdomVillagerEntity` to override `dropEquipment` and `dropCustomDeathLoot` to drop the generic inventory items while ensuring the main hand item isn't duplicated, and handled shift-click prioritizing the wrapper slot.
+
+Technical Notes/Hurdles: Bypassed creating an entirely new inventory object on the entity by repurposing `Villager.getInventory()`, which natively syncs and saves. Handled `Slot#setByPlayer` alongside `Slot#set` in the custom mainhand slot wrapper to ensure 1.21.1 API compliance.
+
+Next Agent Pointers: 
+- `KingdomVillagerMenu` still needs a valid `MenuType` registered in a `ModMenus` registry class to be fully usable in-game. 
+- You will need to build the `Screen` (GUI visual) class that links to this menu.
+- The shift-click logic (`mayPlace` and priority targeting in `quickMoveStack`) currently allows any item into the Tool slot. The next agent implementing Jobs should update the `Slot#mayPlace` check to validate against the future job tool tags (e.g., `KingdomBuilderTags.Items.GUARD_WEAPON`).
+
+Rename kingdombuilder.java - Completed by Exec Agent
+
+Summary: Renamed the main mod class file `kingdombuilder.java` to `KingdomBuilder.java` to align with the class name and Java conventions.
+
+Technical Notes/Hurdles: Also fixed a compilation error in `KingdomVillagerEntity.java` caused by an incorrect `dropEquipment` override signature left by a previous task.
+
+Next Agent Pointers: Continue with the next set of features or bug fixes as defined in the project plan.
+
+Kingdom Villager UI Open on Right-Click - Completed by Exec Agent
+
+Summary: Registered the MenuType in ModMenus, created KingdomVillagerScreen GUI class, registered it on the client, and updated KingdomVillagerEntity#mobInteract to open the GUI using ServerPlayer#openMenu.
+
+Technical Notes/Hurdles: Had to ensure the entity ID is sent via FriendlyByteBuf to allow the client to resolve the villager entity and properly bind the client-side KingdomVillagerMenu to the correct entity object.
+
+Next Agent Pointers: The KingdomVillagerScreen uses a placeholder ResourceLocation for its texture. The GUI will currently render the missing texture graphic if the actual image file is not present in the mod resources. A custom graphic will need to be provided to match the slots.
