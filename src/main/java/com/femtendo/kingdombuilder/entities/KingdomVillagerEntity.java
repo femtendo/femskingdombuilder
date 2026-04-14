@@ -192,6 +192,36 @@ public class KingdomVillagerEntity extends Villager {
     }
 
     @Override
+    public net.minecraft.world.InteractionResult mobInteract(net.minecraft.world.entity.player.Player pPlayer, net.minecraft.world.InteractionHand pHand) {
+        return net.minecraft.world.InteractionResult.PASS;
+    }
+
+    @Override
+    public boolean canBreed() {
+        return false;
+    }
+
+    @Override
+    public boolean wantsMoreFood() {
+        return false;
+    }
+
+    @Override
+    public boolean hasExcessFood() {
+        return false;
+    }
+
+    @Override
+    public boolean hasFarmSeeds() {
+        return false;
+    }
+
+    @Override
+    public boolean canPickUpLoot() {
+        return false;
+    }
+
+    @Override
     public void spawnGolemIfNeeded(ServerLevel level, long gameTime, int minVillagers) {
         // No-op
     }

@@ -21,7 +21,6 @@ import net.minecraft.world.entity.ai.behavior.SetWalkTargetFromBlockMemory;
 import net.minecraft.world.entity.ai.behavior.Swim;
 import net.minecraft.world.entity.ai.behavior.UpdateActivityFromSchedule;
 import net.minecraft.world.entity.ai.behavior.VillagerGoalPackages;
-import net.minecraft.world.entity.ai.behavior.VillagerPanicTrigger;
 import net.minecraft.world.entity.ai.behavior.WakeUp;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.village.poi.PoiTypes;
@@ -74,7 +73,6 @@ public class KingdomVillagerAi {
     private static void registerCoreActivities(Brain<Villager> brain) {
         brain.addActivity(Activity.CORE, 0, ImmutableList.of(
             new Swim(0.8f),
-            new VillagerPanicTrigger(), // POINTER: This makes the villager run when hit.
             InteractWithDoor.create(), // POINTER: Allows the villager to open and close doors while pathfinding.
             WakeUp.create(), // POINTER: Wakes up the villager when the schedule changes.
             new LookAtTargetSink(45, 90),

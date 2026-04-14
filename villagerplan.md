@@ -48,9 +48,9 @@ Implement the `KingdomVillagerEntity`, a custom Minecraft NPC for version 1.21.1
 
 ### 5. Strict Exclusions & Quality Control
 - [x] Remove/Exclude Iron Golem logic.
-- [ ] Remove/Exclude Trading mechanics.
-- [ ] Remove/Exclude Breeding/Love mechanics.
-- [ ] Remove/Exclude Farming/Food-sharing.
+- [x] Remove/Exclude Trading mechanics.
+- [x] Remove/Exclude Breeding/Love mechanics.
+- [x] Remove/Exclude Farming/Food-sharing.
 
 ---
 
@@ -204,3 +204,15 @@ Technical Notes/Hurdles:
 - **Data-Driven Schedule:** By adding `UpdateActivityFromSchedule.create()` to the `CORE` activity, the entity now properly respects the `KINGDOM_SCHEDULE` without manual code intervention.
 
 Next Agent Pointers: The sleeping system is now fully synchronized with the vanilla `Villager` state machine. Do NOT re-introduce `customServerAiStep` overrides for AI logic. If the villager needs new time-based behaviors, simply add them to the relevant activity packages in `KingdomVillagerAi.java`. The next focus should be on Task 5, specifically removing the remaining vanilla mechanics like Breeding and Farming.
+
+### Task 5: Strict Exclusions & Quality Control - Completed by Exec Agent
+
+**Summary:** Ensured `KingdomVillagerEntity` does not inherit unwanted vanilla villager behaviors such as trading, breeding, farming, item pick-up, and iron golem interactions.
+
+**Technical Notes/Hurdles:**
+- **Iron Golem Logic:** Removed `VillagerPanicTrigger` from the core brain activities to prevent panic-based iron golem spawning and gossip generation. (The golem spawning checks were previously disabled by overriding `spawnGolemIfNeeded` and `wantsToSpawnGolem`).
+- **Trading:** Completely disabled the trading UI and logic by overriding `mobInteract` to just return `InteractionResult.PASS` (doing nothing upon right-click).
+- **Breeding & Farming:** Prevented all vanilla breeding and food logic by overriding `canBreed`, `wantsMoreFood`, `hasExcessFood`, and `hasFarmSeeds` to return `false`.
+- **Loot Pickup:** Overrode `canPickUpLoot` to return `false` so the entity no longer tries to pick up food items tossed at it by players.
+
+**Next Agent Pointers:** The vanilla exclusions are securely in place. The entity now only exhibits the strictly defined behaviors we set up. If you need Kingdom Villagers to collect specific items (like tools or custom currencies) later, you will need to revisit `canPickUpLoot` or handle those interactions using a custom inventory system instead of relying on the vanilla `Villager` inventory.
