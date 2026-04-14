@@ -15,6 +15,7 @@ local.properties
 .eclipse/
 .eclipse
 .vscode/
+.eclipse/configurations/
 
 # --- macOS ---
 .DS_Store
