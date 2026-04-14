@@ -51,6 +51,7 @@ public class KingdomVillagerEntity extends Villager {
             MemoryModuleType.HOME,
             MemoryModuleType.MEETING_POINT,
             MemoryModuleType.JOB_SITE,
+            MemoryModuleType.POTENTIAL_JOB_SITE, // REQUIRED by YieldJobSite behavior
             MemoryModuleType.LOOK_TARGET,
             MemoryModuleType.WALK_TARGET,
             MemoryModuleType.CANT_REACH_WALK_TARGET_SINCE,
@@ -59,7 +60,9 @@ public class KingdomVillagerEntity extends Villager {
             MemoryModuleType.DOORS_TO_CLOSE,
             MemoryModuleType.LAST_SLEPT,
             MemoryModuleType.LAST_WOKEN,
-            MemoryModuleType.NEAREST_BED
+            MemoryModuleType.NEAREST_BED,
+            MemoryModuleType.HURT_BY,
+            MemoryModuleType.HURT_BY_ENTITY
     );
 
     public static final List<SensorType<? extends Sensor<? super Villager>>> SENSOR_TYPES = ImmutableList.of(
@@ -130,16 +133,6 @@ public class KingdomVillagerEntity extends Villager {
     @Override
     public Brain.Provider<Villager> brainProvider() {
         return Brain.provider(MEMORY_MODULES, SENSOR_TYPES);
-    }
-    
-    @Override
-    protected void customServerAiStep() {
-        this.level().getProfiler().push("kingdomVillagerBrain");
-        // POINTER: Ensure the brain updates its active activity according to our custom KINGDOM_SCHEDULE
-        this.getBrain().updateActivityFromSchedule(this.level().getDayTime(), this.level().getGameTime());
-        this.getBrain().tick((ServerLevel)this.level(), this);
-        this.level().getProfiler().pop();
-        super.customServerAiStep();
     }
 
     public static AttributeSupplier.Builder createAttributes() {
@@ -231,11 +224,12 @@ public class KingdomVillagerEntity extends Villager {
         this.releasePoi(MemoryModuleType.HOME);
         this.releasePoi(MemoryModuleType.MEETING_POINT);
         this.releasePoi(MemoryModuleType.JOB_SITE);
+        this.releasePoi(MemoryModuleType.POTENTIAL_JOB_SITE);
     }
 
     @Override
     public void releasePoi(MemoryModuleType<net.minecraft.core.GlobalPos> p_35429_) {
-        if (p_35429_ == MemoryModuleType.HOME || p_35429_ == MemoryModuleType.MEETING_POINT || p_35429_ == MemoryModuleType.JOB_SITE) {
+        if (p_35429_ == MemoryModuleType.HOME || p_35429_ == MemoryModuleType.MEETING_POINT || p_35429_ == MemoryModuleType.JOB_SITE || p_35429_ == MemoryModuleType.POTENTIAL_JOB_SITE) {
             super.releasePoi(p_35429_);
         }
     }

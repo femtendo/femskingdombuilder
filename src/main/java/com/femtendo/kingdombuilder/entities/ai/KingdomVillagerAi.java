@@ -19,6 +19,7 @@ import net.minecraft.world.entity.ai.behavior.RandomStroll;
 import net.minecraft.world.entity.ai.behavior.RunOne;
 import net.minecraft.world.entity.ai.behavior.SetWalkTargetFromBlockMemory;
 import net.minecraft.world.entity.ai.behavior.Swim;
+import net.minecraft.world.entity.ai.behavior.UpdateActivityFromSchedule;
 import net.minecraft.world.entity.ai.behavior.VillagerGoalPackages;
 import net.minecraft.world.entity.ai.behavior.VillagerPanicTrigger;
 import net.minecraft.world.entity.ai.behavior.WakeUp;
@@ -78,7 +79,11 @@ public class KingdomVillagerAi {
             WakeUp.create(), // POINTER: Wakes up the villager when the schedule changes.
             new LookAtTargetSink(45, 90),
             new MoveToTargetSink(),
-            AcquirePoi.create((holder) -> holder.is(PoiTypes.HOME), MemoryModuleType.HOME, false, Optional.of((byte) 14)) // POINTER: Claim beds
+            AcquirePoi.create((holder) -> holder.is(PoiTypes.HOME), MemoryModuleType.HOME, false, Optional.of((byte) 14)), // POINTER: Claim beds
+            
+            // POINTER: This behavior forces the brain to obey KINGDOM_SCHEDULE by updating 
+            // the active activity based on the current world time.
+            UpdateActivityFromSchedule.create()
         ));
     }
 

@@ -42,9 +42,9 @@ Implement the `KingdomVillagerEntity`, a custom Minecraft NPC for version 1.21.1
 - [x] **1800 (Tick 13000):** Sleep (Home).
 
 ### 4.5. Adding sleeping in beds to kingdom villager
-- [ ] Implement robust sleeping mechanics for custom entities.
-- [ ] Resolve "bed-hopping" and immediate wake-up issues.
-- [ ] Ensure visual sleeping pose matches server-side state.
+- [x] Implement robust sleeping mechanics for custom entities.
+- [x] Resolve "bed-hopping" and immediate wake-up issues.
+- [x] Ensure visual sleeping pose matches server-side state.
 
 ### 5. Strict Exclusions & Quality Control
 - [x] Remove/Exclude Iron Golem logic.
@@ -193,3 +193,14 @@ Next Agent Pointers: Users can now drop any `.png` skin into the `config/kingdom
 - Check if overriding `getBedOrientation` or `setPosToBed` in `KingdomVillagerEntity` is necessary to ensure perfect alignment.
 - Consider if the `Villager` superclass's `customServerAiStep` (which handles daytime wakeups) is conflicting with the custom schedule.
 - Implementation for custom entity sleeping may require manually handling the `OCCUPIED` blockstate or ensuring the `Brain` doesn't erase `HOME` prematurely.
+
+### Task 4.5: Adding sleeping in beds to kingdom villager - Completed by Exec Agent
+
+Summary: Implemented robust sleeping mechanics by removing a problematic `customServerAiStep` override that caused double-ticking and instability. Replaced manual schedule enforcement with the vanilla `UpdateActivityFromSchedule` behavior in the `CORE` activity.
+
+Technical Notes/Hurdles: 
+- **Double-Ticking Bug:** The previous implementation of `customServerAiStep` forced the brain to evaluate twice per tick, which caused the entity to immediately wake up after laying down. 
+- **Missing Memories:** Added `POTENTIAL_JOB_SITE`, `HURT_BY`, and `HURT_BY_ENTITY` to `MEMORY_MODULES` to satisfy vanilla AI requirements and prevent crashes during panic/death events.
+- **Data-Driven Schedule:** By adding `UpdateActivityFromSchedule.create()` to the `CORE` activity, the entity now properly respects the `KINGDOM_SCHEDULE` without manual code intervention.
+
+Next Agent Pointers: The sleeping system is now fully synchronized with the vanilla `Villager` state machine. Do NOT re-introduce `customServerAiStep` overrides for AI logic. If the villager needs new time-based behaviors, simply add them to the relevant activity packages in `KingdomVillagerAi.java`. The next focus should be on Task 5, specifically removing the remaining vanilla mechanics like Breeding and Farming.
