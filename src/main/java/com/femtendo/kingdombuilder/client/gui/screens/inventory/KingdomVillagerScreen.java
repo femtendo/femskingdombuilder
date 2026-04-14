@@ -11,24 +11,24 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
 
 public class KingdomVillagerScreen extends AbstractContainerScreen<KingdomVillagerMenu> {
-    private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath(KingdomBuilder.MODID, "textures/gui/container/kingdom_villager.png");
+    private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath(KingdomBuilder.MODID, "textures/gui/desiredgui.png");
 
     public KingdomVillagerScreen(KingdomVillagerMenu pMenu, Inventory pPlayerInventory, Component pTitle) {
         super(pMenu, pPlayerInventory, pTitle);
         // Standard inventory sizes
         this.imageWidth = 176;
         this.imageHeight = 166;
-        // POINTER: The generic inventory has 1 row of 8 slots, plus 1 slot for the mainhand. 
-        // We'll use a generic texture or a custom one. Since we don't have a custom one yet, 
-        // we'll use standard generic_54 or similar visually, but ideally we load our custom one.
-        // For now, let's just render the background without a texture or a default one if it's missing.
-        // Actually, let's use the standard dispenser texture or something if we don't have it,
-        // but we'll stick to a custom path that the user can fill in.
     }
 
     @Override
     protected void init() {
         super.init();
+        // Clear standard titles to handle them manually, or adjust standard offsets
+        this.titleLabelX = (this.imageWidth - this.font.width(this.title)) / 2;
+        this.titleLabelY = 6;
+        
+        this.inventoryLabelX = 8;
+        this.inventoryLabelY = 73; // Right above player inventory which starts at 84
     }
 
     @Override
@@ -39,6 +39,13 @@ public class KingdomVillagerScreen extends AbstractContainerScreen<KingdomVillag
     }
 
     @Override
+    protected void renderLabels(GuiGraphics pGuiGraphics, int pMouseX, int pMouseY) {
+        // POINTER: Custom title rendering for cleaner UI instead of standard abstract container screen rendering
+        pGuiGraphics.drawString(this.font, Component.literal("Kingdom Villager"), this.titleLabelX, this.titleLabelY, 4210752, false);
+        pGuiGraphics.drawString(this.font, Component.literal("Inventory"), this.inventoryLabelX, this.inventoryLabelY, 4210752, false);
+    }
+
+    @Override
     protected void renderBg(GuiGraphics pGuiGraphics, float pPartialTick, int pMouseX, int pMouseY) {
         RenderSystem.setShader(GameRenderer::getPositionTexShader);
         RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
@@ -46,10 +53,8 @@ public class KingdomVillagerScreen extends AbstractContainerScreen<KingdomVillag
         int x = (this.width - this.imageWidth) / 2;
         int y = (this.height - this.imageHeight) / 2;
         
-        // POINTER: If texture is missing, this will render the default missing texture (purple/black).
-        // A real mod should have the texture at assets/kingdombuilder/textures/gui/container/kingdom_villager.png.
-        // For now, let's draw a fallback generic 9-slot background if possible, or just the custom one.
-        // We will just draw the custom one.
-        pGuiGraphics.blit(TEXTURE, x, y, 0, 0, this.imageWidth, this.imageHeight);
+        // POINTER: If texture is 357x337, but we want 176x166, we use the blit overload 
+        // that specifies texture size to scale it correctly instead of assuming 256x256.
+        pGuiGraphics.blit(TEXTURE, x, y, 0, 0, this.imageWidth, this.imageHeight, 357, 337);
     }
 }

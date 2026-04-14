@@ -4,7 +4,6 @@ import com.femtendo.kingdombuilder.entities.KingdomVillagerEntity;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -23,19 +22,9 @@ public class KingdomVillagerMenu extends AbstractContainerMenu {
         // POINTER: Accessing the custom 8-slot generic inventory.
         this.genericInventory = villager.getInventory();
 
-        // 1. Add the 8 generic inventory slots (Slots 0 - 7)
-        for (int i = 0; i < 8; ++i) {
-            this.addSlot(new Slot(this.genericInventory, i, 8 + i * 18, 18) {
-                @Override
-                public boolean mayPlace(ItemStack stack) {
-                    return true;
-                }
-            });
-        }
-
-        // 2. Add the 1 "Tool/Weapon" slot wrapping MAINHAND (Slot 8)
-        // POINTER: This slot wraps the entity's MAINHAND directly to prevent desyncs.
-        this.addSlot(new Slot(new SimpleContainer(1), 0, 8 + 8 * 18 + 10, 18) {
+        // 1. Add the 1 "Tool/Weapon" slot wrapping MAINHAND (Slot 0)
+        // POINTER: Placed prominently at top-center.
+        this.addSlot(new Slot(new SimpleContainer(1), 0, 80, 18) {
             @Override
             public ItemStack getItem() {
                 return villager.getItemBySlot(EquipmentSlot.MAINHAND);
@@ -55,12 +44,11 @@ public class KingdomVillagerMenu extends AbstractContainerMenu {
 
             @Override
             public void setChanged() {
-                // Entity handles its own sync when setItemSlot is called.
             }
 
             @Override
             public int getMaxStackSize() {
-                return 1; // Tools/weapons are typically stack size 1, but this enforces it for the slot.
+                return 1;
             }
 
             @Override
@@ -80,19 +68,34 @@ public class KingdomVillagerMenu extends AbstractContainerMenu {
 
             @Override
             public boolean mayPlace(ItemStack stack) {
-                // POINTER: Future jobs could limit this to valid tools/weapons via tags
-                return true; 
+                // Limit to tools/weapons to prevent random blocks from entering the tool slot
+                return stack.getItem() instanceof net.minecraft.world.item.TieredItem ||
+                       stack.getItem() instanceof net.minecraft.world.item.ProjectileWeaponItem ||
+                       stack.getItem() instanceof net.minecraft.world.item.TridentItem ||
+                       stack.getItem() instanceof net.minecraft.world.item.ShieldItem;
             }
         });
 
+        // 2. Add the 8 generic inventory slots (Slots 1 - 8)
+        // POINTER: Row directly below Tool slot
+        for (int i = 0; i < 8; ++i) {
+            this.addSlot(new Slot(this.genericInventory, i, 16 + i * 18, 44) {
+                @Override
+                public boolean mayPlace(ItemStack stack) {
+                    return true;
+                }
+            });
+        }
+
         // 3. Add Player Inventory and Hotbar (Slots 9 - 44)
+        // POINTER: Standard bottom-half configuration
         for (int i = 0; i < 3; ++i) {
             for (int j = 0; j < 9; ++j) {
-                this.addSlot(new Slot(playerInventory, j + i * 9 + 9, 8 + j * 18, 50 + i * 18));
+                this.addSlot(new Slot(playerInventory, j + i * 9 + 9, 8 + j * 18, 84 + i * 18));
             }
         }
         for (int i = 0; i < 9; ++i) {
-            this.addSlot(new Slot(playerInventory, i, 8 + i * 18, 108));
+            this.addSlot(new Slot(playerInventory, i, 8 + i * 18, 142));
         }
     }
 
@@ -110,7 +113,7 @@ public class KingdomVillagerMenu extends AbstractContainerMenu {
             ItemStack slotStack = slot.getItem();
             itemstack = slotStack.copy();
 
-            // 0-7: Generic, 8: Tool, 9-35: Player Inv, 36-44: Hotbar
+            // Slots map: 0 is Tool, 1-8 is Generic, 9-35 is Player Inv, 36-44 is Hotbar
             if (pIndex < 9) {
                 // Shift-clicking from villager to player
                 if (!this.moveItemStackTo(slotStack, 9, 45, true)) {
@@ -118,10 +121,24 @@ public class KingdomVillagerMenu extends AbstractContainerMenu {
                 }
             } else {
                 // Shift-clicking from player to villager
-                // POINTER: Priority to Slot 8 (Tool/Weapon) if valid (currently any item).
-                if (!this.moveItemStackTo(slotStack, 8, 9, false)) {
-                    // Fallback to Slots 0-7 (Generic)
-                    if (!this.moveItemStackTo(slotStack, 0, 8, false)) {
+                // Priority to Slot 0 (Tool/Weapon) if valid
+                boolean movedToVillager = false;
+                if (this.slots.get(0).mayPlace(slotStack)) {
+                    movedToVillager = this.moveItemStackTo(slotStack, 0, 1, false);
+                }
+                
+                if (!movedToVillager) {
+                    // Fallback to Slots 1-8 (Generic)
+                    movedToVillager = this.moveItemStackTo(slotStack, 1, 9, false);
+                }
+                
+                // If still not moved, move between player inv and hotbar
+                if (!movedToVillager) {
+                    if (pIndex >= 9 && pIndex < 36) {
+                        if (!this.moveItemStackTo(slotStack, 36, 45, false)) {
+                            return ItemStack.EMPTY;
+                        }
+                    } else if (pIndex >= 36 && pIndex < 45 && !this.moveItemStackTo(slotStack, 9, 36, false)) {
                         return ItemStack.EMPTY;
                     }
                 }

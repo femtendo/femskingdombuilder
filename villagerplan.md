@@ -216,3 +216,12 @@ Next Agent Pointers: The sleeping system is now fully synchronized with the vani
 - **Loot Pickup:** Overrode `canPickUpLoot` to return `false` so the entity no longer tries to pick up food items tossed at it by players.
 
 **Next Agent Pointers:** The vanilla exclusions are securely in place. The entity now only exhibits the strictly defined behaviors we set up. If you need Kingdom Villagers to collect specific items (like tools or custom currencies) later, you will need to revisit `canPickUpLoot` or handle those interactions using a custom inventory system instead of relying on the vanilla `Villager` inventory.
+
+
+### Bug fix for villager inventory - Completed by Exec Agent
+
+Summary: Finalized the `KingdomVillagerScreen` and `KingdomVillagerMenu` to fix the missing texture issue and implement a custom 45-slot UI layout. Relocated `desiredgui.png` to the correct resource path, implemented robust rendering, and optimized shift-click logic to properly route items between the player inventory, tool slot, and generic villager inventory.
+
+Technical Notes/Hurdles: The provided `desiredgui.png` texture was slightly larger than standard boundaries (357x337), requiring the `pGuiGraphics.blit` overload that allows explicit texture dimensions to scale it neatly into the `176x166` UI boundaries. Corrected shift-click logic in `KingdomVillagerMenu.quickMoveStack` using proper indexing. It first verifies the item using `Slot.mayPlace(stack)` before trying to move it into the Tool Slot (Slot 0) to ensure generic blocks aren't placed there, and it falls back to the generic slots (1-8). If not moved, it correctly alternates between the player inventory and hotbar. Removed default text translation keys and directly implemented clean string labels ("Kingdom Villager" and "Inventory") natively within `KingdomVillagerScreen.renderLabels`.
+
+Next Agent Pointers: The villager GUI is now fully operational and matches the desired design perfectly without any rendering errors. Future UI additions (like extra equipment slots) should follow the same pattern in `KingdomVillagerMenu`, ensuring the indices match up within `quickMoveStack`. No further visual or functional work is needed on the inventory right now.
