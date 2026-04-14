@@ -12,6 +12,9 @@ debug.log
 build/
 out/
 local.properties
+.eclipse/
+.eclipse
+.vscode/
 
 # --- macOS ---
 .DS_Store
