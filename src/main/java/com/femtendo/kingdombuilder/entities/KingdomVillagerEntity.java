@@ -52,6 +52,9 @@ public class KingdomVillagerEntity extends Villager {
     private static final String[] BUILTIN_SKINS = {"steve"};
     private static final List<String> SKIN_POOL = new ArrayList<>();
 
+    // POINTER: Our custom job manager that dictates the villager's current goals based on equipment
+    private final com.femtendo.kingdombuilder.entities.jobs.JobManager jobManager = new com.femtendo.kingdombuilder.entities.jobs.JobManager(this);
+
     public static final List<MemoryModuleType<?>> MEMORY_MODULES = ImmutableList.of(
             MemoryModuleType.HOME,
             MemoryModuleType.MEETING_POINT,
@@ -111,6 +114,29 @@ public class KingdomVillagerEntity extends Villager {
     }
 
     @Override
+    protected void customServerAiStep() {
+        super.customServerAiStep();
+        // POINTER: Evaluate tools and handle goal/behavior switching on tick
+        this.jobManager.tick();
+    }
+
+    @Override
+    public boolean doHurtTarget(net.minecraft.world.entity.Entity target) {
+        boolean didHurt = super.doHurtTarget(target);
+        if (didHurt && target instanceof net.minecraft.world.entity.LivingEntity livingTarget) {
+            ItemStack mainHandItem = this.getItemBySlot(EquipmentSlot.MAINHAND);
+            if (!mainHandItem.isEmpty()) {
+                // POINTER: Apply weapon durability damage when the villager successfully attacks.
+                mainHandItem.getItem().postHurtEnemy(mainHandItem, livingTarget, this);
+                if (mainHandItem.isEmpty()) {
+                    this.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
+                }
+            }
+        }
+        return didHurt;
+    }
+
+    @Override
     protected Brain<?> makeBrain(Dynamic<?> p_35363_) {
         Brain<Villager> brain = this.brainProvider().makeBrain(p_35363_);
         this.registerBrainGoals(brain);
@@ -136,7 +162,8 @@ public class KingdomVillagerEntity extends Villager {
         return Mob.createMobAttributes()
                 .add(Attributes.MAX_HEALTH, 20.0D)
                 .add(Attributes.MOVEMENT_SPEED, 0.5D)
-                .add(Attributes.FOLLOW_RANGE, 48.0D); 
+                .add(Attributes.FOLLOW_RANGE, 48.0D)
+                .add(Attributes.ATTACK_DAMAGE, 1.0D); 
     }
 
     @Override
@@ -148,27 +175,31 @@ public class KingdomVillagerEntity extends Villager {
     @Override
     protected void dropEquipment() {
         super.dropEquipment();
-        // POINTER: The generic inventory drops are handled in dropCustomDeathLoot or here.
-        // We drop them here to ensure they drop consistently with equipment.
-        SimpleContainer inventory = this.getInventory();
-        for (int i = 0; i < inventory.getContainerSize(); i++) {
-            ItemStack stack = inventory.getItem(i);
-            if (!stack.isEmpty()) {
-                // Ensure generic inventory does NOT contain the main hand item to avoid duplication.
-                // The sync logic ensures MAINHAND is not actually in the generic inventory, 
-                // but we double-check just in case.
-                if (!ItemStack.matches(stack, this.getItemBySlot(EquipmentSlot.MAINHAND))) {
-                    this.spawnAtLocation(stack);
-                }
-                inventory.setItem(i, ItemStack.EMPTY);
-            }
-        }
     }
 
     @Override
     protected void dropCustomDeathLoot(ServerLevel pLevel, DamageSource pSource, boolean pRecentlyHit) {
         super.dropCustomDeathLoot(pLevel, pSource, pRecentlyHit);
-        // POINTER: If any other custom drops (like job-specific drops) are needed later, they go here.
+        
+        // POINTER: The generic inventory drops are handled here during death loot generation.
+        // We drop them here to ensure they drop consistently with equipment.
+        SimpleContainer inventory = this.getInventory();
+        for (int i = 0; i < inventory.getContainerSize(); i++) {
+            ItemStack stack = inventory.getItem(i);
+            if (!stack.isEmpty()) {
+                // POINTER: Spawn the item entity in the world for the player to collect.
+                this.spawnAtLocation(stack.copy());
+                inventory.setItem(i, ItemStack.EMPTY);
+            }
+        }
+        
+        // POINTER: Force MAINHAND equipment to drop by overriding its normal drop chance check,
+        // since we want the villager's tool/weapon to always be recoverable on death.
+        ItemStack mainHandStack = this.getItemBySlot(EquipmentSlot.MAINHAND);
+        if (!mainHandStack.isEmpty()) {
+            this.spawnAtLocation(mainHandStack.copy());
+            this.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
+        }
     }
     
     @Override

@@ -135,3 +135,67 @@ Summary: Registered the MenuType in ModMenus, created KingdomVillagerScreen GUI 
 Technical Notes/Hurdles: Had to ensure the entity ID is sent via FriendlyByteBuf to allow the client to resolve the villager entity and properly bind the client-side KingdomVillagerMenu to the correct entity object.
 
 Next Agent Pointers: The KingdomVillagerScreen uses a placeholder ResourceLocation for its texture. The GUI will currently render the missing texture graphic if the actual image file is not present in the mod resources. A custom graphic will need to be provided to match the slots.
+
+Design the Dynamic AI and State Transitions - Completed by Exec Agent
+
+Summary: Implemented the `JobManager` and the `Job` interface to allow dynamic behavior shifting based on the main-hand equipped item. Created `CivilianJob` (default state with `PanicGoal`) and `GuardJob` (active when holding a sword, featuring `MeleeAttackGoal` and tiered `NearestAttackableTargetGoal` logic).
+
+Technical Notes/Hurdles: Bypassed the rigid nature of vanilla `Villager` brains by actively adding and removing goals directly from the `goalSelector` and `targetSelector` during job transitions. Used custom predicates in `GuardJob` to satisfy the complex target priority (active attackers -> attackers of villagers -> any hostile mob). Weapon breakage/swap check is efficiently done via `ItemStack.matches` in `JobManager.tick()` called by `KingdomVillagerEntity.customServerAiStep()`. Note that if an item takes damage but doesn't break, the class type stays the same, preventing goal resetting mid-combat.
+
+Next Agent Pointers: 
+- `JobManager` currently checks for the vanilla `#minecraft:swords` tag. You may want to refine this to use custom tags (e.g., `#kingdombuilder:tools/guard_weapon`) as specified in the original plan.
+- Consider implementing pathfinding to resupply a weapon when the main-hand weapon breaks (a dev note exists in `JobManager` for this).
+- As you add more jobs (e.g., Lumberjack, Farmer), create new classes implementing `Job` and register them in `JobManager.evaluateJob()`.
+
+Fix Villager Melee Attack Crash - Completed by Exec Agent
+
+Summary: Fixed a crash that occurred when a KingdomVillager in the Guard role attempted to perform a melee attack. The `Attributes.ATTACK_DAMAGE` attribute has been added to the base villager attributes.
+
+Technical Notes/Hurdles: Vanilla villagers do not have an attack damage attribute since they never fight. When `MeleeAttackGoal` tried to process an attack, it threw an `IllegalArgumentException`. Added `.add(Attributes.ATTACK_DAMAGE, 1.0D)` to `KingdomVillagerEntity.createAttributes()`.
+
+Next Agent Pointers: 
+- Base attack damage is set to 1.0D, but this will be naturally scaled by whatever weapon the villager is holding.
+Fix Tool Visual Rendering - Completed by Exec Agent
+
+Summary: Modified `KingdomVillagerRenderer` to extend `HumanoidMobRenderer` instead of `MobRenderer`, which natively adds the `ItemInHandLayer` needed to visually render equipped items. Also updated the `render` method to dynamically update the `HumanoidModel.ArmPose` based on whether the main-hand or off-hand are holding items, preventing the arms from resting at the sides while holding a weapon.
+
+Technical Notes/Hurdles: The villager model was not rendering held items because the default `MobRenderer` does not attach `ItemInHandLayer`. We let `HumanoidMobRenderer` handle layer additions and then inject logic inside `render()` to sync the villager's `InteractionHand` item states to the model's arm poses. Added logic to correctly respect `entity.getMainArm().
+
+Next Agent Pointers:
+- If specific animations (like throwing a spear or pulling a bow) are needed later, you will need to expand the `ArmPose` mapping inside `KingdomVillagerRenderer.setModelProperties()` to check the item's `UseAnim` instead of just setting it to `ArmPose.ITEM`.
+
+Fix Tool Durability - Completed by Exec Agent
+
+Summary: Implemented weapon durability loss for Kingdom Villagers by overriding `doHurtTarget` to call `Item#postHurtEnemy` on the main-hand weapon.
+
+Technical Notes/Hurdles: Vanilla `Mob` attacking logic natively handles item drops and enchantments but does not damage the mob's held item on attack. We injected `mainHandItem.getItem().postHurtEnemy` explicitly into the attack flow. Used `postHurtEnemy` instead of a hardcoded 1 damage decrement because tools like axes or tridents require specific logic (e.g. 2 damage per hit for axes). Ensured the slot clears natively via `ItemStack` decrement if the durability hits zero.
+
+Next Agent Pointers:
+- If we later allow villagers to dual-wield weapons or attack with the off-hand, `doHurtTarget` will need to check which hand performed the attack and damage that specific `ItemStack`.
+
+Cap Attack Movement Speed - Completed by Exec Agent
+
+Summary: Modified the `MeleeAttackGoal` in `GuardJob` to use a speed modifier of 1.0D instead of 1.2D so the kingdom villager moves at regular speed when engaging a target.
+
+Technical Notes/Hurdles: The AI's `MeleeAttackGoal` naturally accepts a speed multiplier. By changing this parameter, the villager uses its base `MOVEMENT_SPEED` attribute without applying a sprint multiplier, matching the requested behavior.
+
+Next Agent Pointers:
+- If you introduce new combat goals (like `RangedAttackGoal`), ensure their movement speed modifier is also capped at 1.0D unless a specific "sprinting" behavior is intended.
+
+Fix Kingdom Villager Death Drops - Completed by Exec Agent
+
+Summary: Fixed an issue where kingdom villagers were not dropping items from their generic inventory or their main-hand tool upon death.
+
+Technical Notes/Hurdles: Moved the generic inventory drop logic from `dropEquipment()` (which only executes reliably under certain loot conditions and was improperly checking for MAINHAND equality) to `dropCustomDeathLoot()`. Also forced a 100% drop chance for the `MAINHAND` equipment slot post-super call to bypass the default 8.5% mob drop chance without duplicating the item.
+
+Next Agent Pointers:
+- If kingdom villagers should wear and drop armor in the future, you may need to apply the same guaranteed drop logic to `EquipmentSlot.CHEST`, `LEGS`, etc. inside `dropCustomDeathLoot()`.
+
+Remove Testing Files - Completed by Exec Agent
+
+Summary: Removed residual, non-implemented testing and temporary files (test_layer.java, test_override.java, test_code.java, and fix.py) from the workspace.
+
+Technical Notes/Hurdles: These files were left over from previous debugging and investigation phases and were removed to clean up the repository.
+
+Next Agent Pointers:
+- None. The workspace is now clean of these temporary testing artifacts.
