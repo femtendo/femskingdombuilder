@@ -51,7 +51,7 @@ public class KingdomVillagerEntity extends Villager {
             MemoryModuleType.HOME,
             MemoryModuleType.MEETING_POINT,
             MemoryModuleType.JOB_SITE,
-            MemoryModuleType.POTENTIAL_JOB_SITE, // REQUIRED by YieldJobSite behavior
+            MemoryModuleType.POTENTIAL_JOB_SITE,
             MemoryModuleType.LOOK_TARGET,
             MemoryModuleType.WALK_TARGET,
             MemoryModuleType.CANT_REACH_WALK_TARGET_SINCE,
@@ -93,24 +93,18 @@ public class KingdomVillagerEntity extends Villager {
                     }
                 }
             } catch (IOException e) {
-                // We use a simple logger or just ignore if it fails, but better to log
+                // Ignore
             }
         }
     }
     
-    // POINTER: We're using the Villager base class to get access to the Brain and POI mechanics.
-    // However, we are NOT using its trading or profession systems. This constructor sets the profession to NONE.
     public KingdomVillagerEntity(EntityType<? extends Villager> p_35262_, Level p_35263_) {
         super(p_35262_, p_35263_);
         this.setVillagerData(this.getVillagerData().setProfession(VillagerProfession.NONE));
-        // POINTER: We set the custom Kingdom schedule for the brain to know which activities to run at which time.
         this.getBrain().setSchedule(KingdomVillagerAi.KINGDOM_SCHEDULE);
-        // POINTER: Required for the entity to pathfind through doors
         ((GroundPathNavigation) this.getNavigation()).setCanOpenDoors(true);
     }
 
-    // POINTER: This is the core of the new AI system. We are creating a Brain with specific memories and sensors.
-    // This allows the entity to interact with the world in a more complex way than simple goal-based AI.
     @Override
     protected Brain<?> makeBrain(Dynamic<?> p_35363_) {
         Brain<Villager> brain = this.brainProvider().makeBrain(p_35363_);
@@ -128,8 +122,6 @@ public class KingdomVillagerEntity extends Villager {
         KingdomVillagerAi.BrainProvider(this, p_35346_);
     }
 
-    // POINTER: The Brain provider defines the blueprint for the entity's brain.
-    // We've stripped it down to only include the memories and sensors required for our custom behaviors.
     @Override
     public Brain.Provider<Villager> brainProvider() {
         return Brain.provider(MEMORY_MODULES, SENSOR_TYPES);
@@ -139,7 +131,7 @@ public class KingdomVillagerEntity extends Villager {
         return Mob.createMobAttributes()
                 .add(Attributes.MAX_HEALTH, 20.0D)
                 .add(Attributes.MOVEMENT_SPEED, 0.5D)
-                .add(Attributes.FOLLOW_RANGE, 48.0D); // Required for POI detection
+                .add(Attributes.FOLLOW_RANGE, 48.0D); 
     }
 
     @Override
@@ -148,7 +140,6 @@ public class KingdomVillagerEntity extends Villager {
         builder.define(DATA_SKIN_ID, "steve");
     }
     
-    // POINTER: We're disabling vanilla trading by returning empty merchant offers.
     @Override
     public void setOffers(MerchantOffers p_35414_) {
         // No trading
@@ -182,8 +173,6 @@ public class KingdomVillagerEntity extends Villager {
             String randomSkin = SKIN_POOL.get(this.random.nextInt(SKIN_POOL.size()));
             this.setSkinId(randomSkin);
         }
-        // POINTER: We need to manually set the VillagerData profession to NONE here as well,
-        // to ensure it's correct from the moment of spawning.
         this.setVillagerData(this.getVillagerData().setProfession(VillagerProfession.NONE));
         return super.finalizeSpawn(level, difficulty, spawnType, spawnGroupData);
     }
@@ -191,35 +180,27 @@ public class KingdomVillagerEntity extends Villager {
     @Nullable
     @Override
     public Villager getBreedOffspring(ServerLevel p_146743_, AgeableMob p_146744_) {
-        return null; // No breeding
+        return null; 
     }
 
-    // POINTER: We override this to prevent the entity from becoming a zombie villager.
     public boolean canBeConvertedToZombie() {
         return false;
     }
     
-    // POINTER: This prevents the entity from being a "special" villager like a wandering trader.
     public boolean isWanderer() {
         return false;
     }
 
-    // POINTER: We intentionally disable vanilla Iron Golem generation.
-    // Panicking triggers spawn checks which crash looking for LAST_SLEPT and other vanilla memories.
-    // Bypassing these methods fixes the crash without bloating the Brain Provider with unused memories.
     @Override
     public void spawnGolemIfNeeded(ServerLevel level, long gameTime, int minVillagers) {
         // No-op
     }
 
-    // POINTER: Prevents the entity from even attempting to spawn a golem during panic states.
     @Override
     public boolean wantsToSpawnGolem(long gameTime) {
         return false;
     }
 
-    // POINTER: This override prevents crashes during entity death by ignoring vanilla memory modules like POTENTIAL_JOB_SITE.
-    // Note: Since releaseAllPois is private in Forge 1.21.1, we define it here as instructed but must also override releasePoi to actually intercept the crash.
     protected void releaseAllPois() {
         this.releasePoi(MemoryModuleType.HOME);
         this.releasePoi(MemoryModuleType.MEETING_POINT);
@@ -234,4 +215,3 @@ public class KingdomVillagerEntity extends Villager {
         }
     }
 }
-
