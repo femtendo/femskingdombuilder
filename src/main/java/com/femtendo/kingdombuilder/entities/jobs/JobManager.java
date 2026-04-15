@@ -9,6 +9,9 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.core.registries.Registries;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.function.Supplier;
 
 // POINTER: Manages the active job for a KingdomVillager based on their equipped tools.
 public class JobManager {
@@ -16,9 +19,21 @@ public class JobManager {
     private Job currentJob;
     private ItemStack lastEvaluatedMainHand = ItemStack.EMPTY;
 
-    // POINTER: Future-proofing - Tag definitions. Using standard forge/minecraft tags for weapons if possible,
-    // but defining custom tags as per spec. For now we use the common minecraft:swords tag.
-    public static final TagKey<Item> GUARD_WEAPON = TagKey.create(Registries.ITEM, ResourceLocation.fromNamespaceAndPath("minecraft", "swords"));
+    // POINTER: Custom tag definitions using 1.21.1 ResourceLocation.fromNamespaceAndPath.
+    public static final TagKey<Item> GUARD_WEAPON = TagKey.create(Registries.ITEM, ResourceLocation.fromNamespaceAndPath("kingdombuilder", "tools/guard_weapon"));
+
+    // POINTER: The Job Factory Registry. 
+    // This LinkedHashMap maps a specific Item Tag to a Supplier that creates the corresponding Job.
+    // To register a new job (e.g. Lumberjack):
+    // 1. Define a new TagKey<Item> (e.g. LUMBERJACK_AXE).
+    // 2. Add it to this map: JOB_REGISTRY.put(LUMBERJACK_AXE, LumberjackJob::new);
+    // 3. Create the corresponding JSON file in data/kingdombuilder/tags/item/tools/
+    // Using LinkedHashMap ensures insertion order priority if an item has multiple tags.
+    private static final Map<TagKey<Item>, Supplier<Job>> JOB_REGISTRY = new LinkedHashMap<>();
+
+    static {
+        JOB_REGISTRY.put(GUARD_WEAPON, GuardJob::new);
+    }
 
     public JobManager(KingdomVillagerEntity entity) {
         this.entity = entity;
@@ -38,12 +53,19 @@ public class JobManager {
     }
 
     private void evaluateJob(ItemStack mainHand) {
-        Job newJob;
+        Job newJob = null;
 
-        if (!mainHand.isEmpty() && mainHand.is(GUARD_WEAPON)) {
-            newJob = new GuardJob();
-        } else {
-            // Default job
+        if (!mainHand.isEmpty()) {
+            for (Map.Entry<TagKey<Item>, Supplier<Job>> entry : JOB_REGISTRY.entrySet()) {
+                if (mainHand.is(entry.getKey())) {
+                    newJob = entry.getValue().get();
+                    break;
+                }
+            }
+        }
+
+        // Default job fallback if no recognized tags are matched or hands are empty
+        if (newJob == null) {
             newJob = new CivilianJob();
         }
 

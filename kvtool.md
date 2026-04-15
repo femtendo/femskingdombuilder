@@ -266,3 +266,22 @@ Technical Notes/Hurdles: Cleaned up the root directory to ensure no lingering te
 
 Next Agent Pointers:
 - None. The workspace is fully clean of temporary test files and ready for the next implementation phase.
+
+Build the "Tool-to-Job" Future-Proofing Framework - Completed by Exec Agent
+
+Summary: Implemented the Job Factory Registry within `JobManager` using a `LinkedHashMap` to map custom `TagKey<Item>` definitions to `Job` instantiation. Created a new datapack-driven 1.21.1 tag (`kingdombuilder:tools/guard_weapon`) and the corresponding JSON file (`guard_weapon.json`) to register swords into the system dynamically, removing the hardcoded `if/else` checks.
+
+Technical Notes/Hurdles: Used `ResourceLocation.fromNamespaceAndPath()` as required by the 1.21.1 tag registry API. `LinkedHashMap` was used instead of a standard `HashMap` to ensure that evaluation order priority is preserved in case items carry multiple job tags in the future.
+
+Next Agent Pointers: 
+- To add a new job (e.g., Lumberjack): 1. Create `LumberjackJob.java` implementing `Job`. 2. Define `TagKey<Item> LUMBERJACK_AXE` in `JobManager` using `ResourceLocation.fromNamespaceAndPath`. 3. Add `JOB_REGISTRY.put(LUMBERJACK_AXE, LumberjackJob::new);` to the static block. 4. Create the corresponding JSON file in `src/main/resources/data/kingdombuilder/tags/item/tools/`.
+- If an entity drops their tool and their main hand becomes empty, the fallback is safely defaulting to `CivilianJob()`.
+
+Document the Tool-to-Job Framework - Completed by Exec Agent
+
+Summary: Created `tool-to-job.md` in the project root to document the process of adding new tools, linking them to jobs via tags, and explaining the registry-based JobManager evaluation loop.
+
+Technical Notes/Hurdles: Standardized the documentation to reflect the recent 1.21.1 updates like using `ResourceLocation.fromNamespaceAndPath()` and creating tag JSON files, ensuring clear steps for modders adding jobs like Lumberjack.
+
+Next Agent Pointers: 
+- The `tool-to-job.md` serves as a high-level API reference for the mod's job system. Refer to it when implementing the next jobs (e.g., Farmer, Lumberjack).
