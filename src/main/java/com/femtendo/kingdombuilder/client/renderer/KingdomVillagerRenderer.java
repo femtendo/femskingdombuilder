@@ -20,16 +20,14 @@ import net.minecraft.client.renderer.entity.layers.HumanoidArmorLayer;
 public class KingdomVillagerRenderer extends HumanoidMobRenderer<KingdomVillagerEntity, PlayerModel<KingdomVillagerEntity>> {
 
     public KingdomVillagerRenderer(EntityRendererProvider.Context context) {
-        // POINTER: We use ModelLayers.PLAYER for the standard bipedal player model.
-        // The 'false' boolean indicates it's not the slim (Alex) model.
-        // HumanoidMobRenderer constructor automatically adds ItemInHandLayer, CustomHeadLayer, and ElytraLayer.
         super(context, new PlayerModel<>(context.bakeLayer(ModelLayers.PLAYER), false), 0.5f);
         
-        // POINTER: In Forge 1.21.1, HumanoidArmorLayer still strictly requires ModelManager, despite future refactors.
+        // POINTER: Reverting to getModelManager(). In Forge 1.21.1, this remains the correct 
+        // getter for the HumanoidArmorLayer constructor.
         this.addLayer(new HumanoidArmorLayer<>(this, 
             new HumanoidModel<>(context.bakeLayer(ModelLayers.PLAYER_INNER_ARMOR)), 
             new HumanoidModel<>(context.bakeLayer(ModelLayers.PLAYER_OUTER_ARMOR)),
-            context.getModelManager()));
+            context.getModelManager())); 
     }
 
     @Override
@@ -48,7 +46,16 @@ public class KingdomVillagerRenderer extends HumanoidMobRenderer<KingdomVillager
 
     @Override
     public void render(KingdomVillagerEntity entity, float entityYaw, float partialTicks, PoseStack matrixStack, MultiBufferSource buffer, int packedLight) {
-        // POINTER: Set arm poses based on held items so the arms aren't stuck downwards when holding a weapon.
+        
+        // DEBUG: Ask the client directly if it sees the armor. 
+        // We limit it to every 20 ticks so it doesn't flood your console 60 times a second.
+        if (entity.tickCount % 20 == 0) {
+            ItemStack chestItem = entity.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST);
+            if (!chestItem.isEmpty()) {
+                System.out.println("CLIENT RENDERER SEES ARMOR: " + chestItem.getHoverName().getString());
+            }
+        }
+
         this.setModelProperties(entity);
         super.render(entity, entityYaw, partialTicks, matrixStack, buffer, packedLight);
     }

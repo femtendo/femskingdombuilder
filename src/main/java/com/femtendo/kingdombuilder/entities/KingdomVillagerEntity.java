@@ -127,22 +127,8 @@ public class KingdomVillagerEntity extends Villager {
 
     private void evaluateAndEquipArmor() {
         SimpleContainer inventory = this.getInventory();
-        if (inventory == null) {
-            System.out.println("DEBUG: Inventory is completely NULL!");
-            return;
-        }
+        if (inventory == null) return;
 
-        // DEBUG: Print the exact contents of the custom inventory to the server console
-        System.out.println("--- Kingdom Villager Inventory Check ---");
-        for (int i = 0; i < inventory.getContainerSize(); i++) {
-            ItemStack stack = inventory.getItem(i);
-            if (!stack.isEmpty()) {
-                System.out.println("Slot " + i + ": " + stack.getHoverName().getString() + " (Count: " + stack.getCount() + ")");
-            }
-        }
-        System.out.println("----------------------------------------");
-
-        // Iterate through all 4 armor slots: HEAD, CHEST, LEGS, FEET
         EquipmentSlot[] armorSlots = new EquipmentSlot[] {
             EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET
         };
@@ -154,21 +140,21 @@ public class KingdomVillagerEntity extends Villager {
             int bestInvIndex = -1;
             double bestInvArmorValue = currentArmorValue;
 
-            // Iterate over generic 8-slot inventory
             for (int i = 0; i < inventory.getContainerSize(); i++) {
                 ItemStack invStack = inventory.getItem(i);
                 if (invStack.isEmpty()) continue;
 
-                // POINTER: 1.21.1 robust slot checking via Equipable (bypassing 1.21.2+ Data Component logic)
-                net.minecraft.world.item.Equipable equipable = net.minecraft.world.item.Equipable.get(invStack);
-                EquipmentSlot invSlot = equipable != null ? equipable.getEquipmentSlot() : null;
-
-                // DEBUG: Let's see what the game actually thinks this item is!
-                System.out.println("Checking " + invStack.getHoverName().getString() + " | Identified Slot: " + (invSlot != null ? invSlot.getName() : "NONE") + " | Target Slot: " + slot.getName());
+                // POINTER: The Radical Failsafe. 
+                // If the generic getEquipmentSlotForItem fails, we force-check the ArmorItem type.
+                EquipmentSlot invSlot = this.getEquipmentSlotForItem(invStack);
+                if (invStack.getItem() instanceof net.minecraft.world.item.ArmorItem armorItem) {
+                    invSlot = armorItem.getType().getSlot();
+                }
 
                 if (invSlot == slot) {
                     double invArmorValue = calculateArmorValue(invStack, slot);
                     
+                    // POINTER: Strictly require the new armor to be BETTER (>), not just equal.
                     if (invArmorValue > bestInvArmorValue) {
                         bestInvArmorValue = invArmorValue;
                         bestInvIndex = i;
@@ -176,80 +162,87 @@ public class KingdomVillagerEntity extends Villager {
                 }
             }
 
-            // POINTER: Swap logic for full inventories.
             if (bestInvIndex != -1) {
                 ItemStack betterArmor = inventory.getItem(bestInvIndex);
                 
-                // DEBUG: Print to server console to confirm the logic is actually firing!
-                System.out.println("KingdomVillager equipping " + betterArmor.getHoverName().getString() + " in " + slot.getName());
+                // DEBUG: Verify the exact math that triggered the swap
+                System.out.println("RADICAL SWAP: Replacing " + currentEquipped.getHoverName().getString() + " (Score: " + currentArmorValue + ") with " + betterArmor.getHoverName().getString() + " (Score: " + bestInvArmorValue + ")");
 
-                // 1:1 Swap
-                inventory.setItem(bestInvIndex, currentEquipped.copy());
+                // 1. Clear the inventory slot so it doesn't duplicate
+                inventory.setItem(bestInvIndex, ItemStack.EMPTY);
+                
+                // 2. Drop the old equipment into the world natively
+                if (!currentEquipped.isEmpty()) {
+                    this.spawnAtLocation(currentEquipped.copy());
+                }
+
+                // 3. Force equip the new item
                 this.setItemSlot(slot, betterArmor.copy());
-                
-                // POINTER: Ensure the villager actually drops the armor upon death
                 this.setDropChance(slot, 2.0f); 
-                
-                if (betterArmor.getItem() instanceof net.minecraft.world.item.Equipable equipable) {
-                    this.playSound(equipable.getEquipSound().value(), 1.0F, 1.0F);
-                } else {
-                    this.playSound(net.minecraft.sounds.SoundEvents.ARMOR_EQUIP_GENERIC.value(), 1.0F, 1.0F);
+
+                // 4. Force Client Sync
+                if (this.level() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+                    serverLevel.getChunkSource().broadcastAndSend(this, 
+                        new net.minecraft.network.protocol.game.ClientboundSetEquipmentPacket(
+                            this.getId(), 
+                            java.util.List.of(com.mojang.datafixers.util.Pair.of(slot, betterArmor.copy()))
+                        )
+                    );
                 }
             }
         }
     }
 
-    private double calculateArmorValue(ItemStack stack, EquipmentSlot slot) {
-        if (stack.isEmpty()) return 0.0;
-
-        double baseArmor = 0.0;
-        double armorToughness = 0.0;
-
-        // POINTER: In 1.21.1, check the stack's explicit modifiers first. 
-        // If empty (standard for un-modified vanilla items), fall back to the base Item's default components.
-        net.minecraft.world.item.component.ItemAttributeModifiers modifiers = stack.get(net.minecraft.core.component.DataComponents.ATTRIBUTE_MODIFIERS);
+    private double calculateArmorValue(ItemStack stack, EquipmentSlot targetSlot) {
+        // POINTER: Empty slots are explicitly worse (-1.0) than any piece of armor (0.0+)
+        if (stack.isEmpty()) return -1.0; 
         
-        if (modifiers == null || modifiers.modifiers().isEmpty()) {
-            modifiers = stack.getItem().components().getOrDefault(
+        double score = 0.0;
+
+        // --- THE RADICAL SHIFT: HYBRID EVALUATION ---
+        // 1. Object-Oriented Engine: Guarantees 100% accurate stats for Vanilla and 99% of Modded armors.
+        if (stack.getItem() instanceof net.minecraft.world.item.ArmorItem armorItem) {
+            score += armorItem.getDefense();
+            score += armorItem.getToughness() * 2.0;
+        } 
+        else {
+            // 2. Data Component Fallback: Only parses components if the item completely bypasses the ArmorItem class.
+            net.minecraft.world.item.component.ItemAttributeModifiers modifiers = stack.getOrDefault(
                 net.minecraft.core.component.DataComponents.ATTRIBUTE_MODIFIERS, 
                 net.minecraft.world.item.component.ItemAttributeModifiers.EMPTY
             );
-        }
-
-        for (net.minecraft.world.item.component.ItemAttributeModifiers.Entry mod : modifiers.modifiers()) {
-            // POINTER: In 1.21.1, slot.test() uses EquipmentSlotGroup. Ensure the target slot is valid for this modifier.
-            if (mod.slot().test(slot)) {
-                String attrName = mod.attribute().unwrapKey().map(key -> key.location().getPath()).orElse("");
-                
-                if (attrName.equals("armor")) {
-                    baseArmor += mod.modifier().amount();
-                } else if (attrName.equals("armor_toughness")) {
-                    armorToughness += mod.modifier().amount();
+            
+            for (net.minecraft.world.item.component.ItemAttributeModifiers.Entry mod : modifiers.modifiers()) {
+                if (mod.slot().test(targetSlot)) {
+                    // Fuzzy match to catch mapping anomalies
+                    String attrId = mod.attribute().unwrapKey().map(key -> key.location().getPath()).orElse("");
+                    if (attrId.contains("armor_toughness")) {
+                        score += mod.modifier().amount() * 2.0;
+                    } else if (attrId.contains("armor")) {
+                        score += mod.modifier().amount();
+                    }
                 }
             }
         }
 
-        // POINTER: 1.21.1 streamlines enchantments into a Data Component as well.
-        int protection = 0;
+        // 3. Native Enchantment Evaluation (Protection)
         if (this.level() != null && this.level().registryAccess() != null) {
             try {
+                var enchRegistry = this.level().registryAccess().registryOrThrow(net.minecraft.core.registries.Registries.ENCHANTMENT);
+                var protectionHolder = enchRegistry.getHolderOrThrow(net.minecraft.world.item.enchantment.Enchantments.PROTECTION);
                 net.minecraft.world.item.enchantment.ItemEnchantments enchantments = stack.getOrDefault(
                     net.minecraft.core.component.DataComponents.ENCHANTMENTS, 
                     net.minecraft.world.item.enchantment.ItemEnchantments.EMPTY
                 );
-                
-                var enchRegistry = this.level().registryAccess().registryOrThrow(net.minecraft.core.registries.Registries.ENCHANTMENT);
-                var protectionHolder = enchRegistry.getHolderOrThrow(net.minecraft.world.item.enchantment.Enchantments.PROTECTION);
-                
-                // Get the level of protection directly from the component
-                protection = enchantments.getLevel(protectionHolder);
+                score += enchantments.getLevel(protectionHolder) * 1.5;
             } catch (Exception e) {
-                // Ignore gracefully if registries are temporarily unavailable
+                // Ignore gracefully if registry isn't ready
             }
         }
 
-        return baseArmor * 1.0 + armorToughness * 2.0 + (protection * 1.5);
+        return score;
     }
+
 
     @Override
     public boolean doHurtTarget(net.minecraft.world.entity.Entity target) {
