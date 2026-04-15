@@ -15,6 +15,8 @@ import net.minecraft.world.entity.HumanoidArm;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.renderer.MultiBufferSource;
 
+import net.minecraft.client.renderer.entity.layers.HumanoidArmorLayer;
+
 public class KingdomVillagerRenderer extends HumanoidMobRenderer<KingdomVillagerEntity, PlayerModel<KingdomVillagerEntity>> {
 
     public KingdomVillagerRenderer(EntityRendererProvider.Context context) {
@@ -22,6 +24,12 @@ public class KingdomVillagerRenderer extends HumanoidMobRenderer<KingdomVillager
         // The 'false' boolean indicates it's not the slim (Alex) model.
         // HumanoidMobRenderer constructor automatically adds ItemInHandLayer, CustomHeadLayer, and ElytraLayer.
         super(context, new PlayerModel<>(context.bakeLayer(ModelLayers.PLAYER), false), 0.5f);
+        
+        // POINTER: In Forge 1.21.1, HumanoidArmorLayer still strictly requires ModelManager, despite future refactors.
+        this.addLayer(new HumanoidArmorLayer<>(this, 
+            new HumanoidModel<>(context.bakeLayer(ModelLayers.PLAYER_INNER_ARMOR)), 
+            new HumanoidModel<>(context.bakeLayer(ModelLayers.PLAYER_OUTER_ARMOR)),
+            context.getModelManager()));
     }
 
     @Override

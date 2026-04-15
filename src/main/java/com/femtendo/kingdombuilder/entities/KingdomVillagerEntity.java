@@ -118,6 +118,137 @@ public class KingdomVillagerEntity extends Villager {
         super.customServerAiStep();
         // POINTER: Evaluate tools and handle goal/behavior switching on tick
         this.jobManager.tick();
+
+        // POINTER: Run armor auto-equip logic every 20 ticks (1 second).
+        if (this.tickCount % 20 == 0) {
+            this.evaluateAndEquipArmor();
+        }
+    }
+
+    private void evaluateAndEquipArmor() {
+        SimpleContainer inventory = this.getInventory();
+        if (inventory == null) {
+            System.out.println("DEBUG: Inventory is completely NULL!");
+            return;
+        }
+
+        // DEBUG: Print the exact contents of the custom inventory to the server console
+        System.out.println("--- Kingdom Villager Inventory Check ---");
+        for (int i = 0; i < inventory.getContainerSize(); i++) {
+            ItemStack stack = inventory.getItem(i);
+            if (!stack.isEmpty()) {
+                System.out.println("Slot " + i + ": " + stack.getHoverName().getString() + " (Count: " + stack.getCount() + ")");
+            }
+        }
+        System.out.println("----------------------------------------");
+
+        // Iterate through all 4 armor slots: HEAD, CHEST, LEGS, FEET
+        EquipmentSlot[] armorSlots = new EquipmentSlot[] {
+            EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET
+        };
+
+        for (EquipmentSlot slot : armorSlots) {
+            ItemStack currentEquipped = this.getItemBySlot(slot);
+            double currentArmorValue = calculateArmorValue(currentEquipped, slot);
+
+            int bestInvIndex = -1;
+            double bestInvArmorValue = currentArmorValue;
+
+            // Iterate over generic 8-slot inventory
+            for (int i = 0; i < inventory.getContainerSize(); i++) {
+                ItemStack invStack = inventory.getItem(i);
+                if (invStack.isEmpty()) continue;
+
+                // POINTER: 1.21.1 robust slot checking via Equipable (bypassing 1.21.2+ Data Component logic)
+                net.minecraft.world.item.Equipable equipable = net.minecraft.world.item.Equipable.get(invStack);
+                EquipmentSlot invSlot = equipable != null ? equipable.getEquipmentSlot() : null;
+
+                // DEBUG: Let's see what the game actually thinks this item is!
+                System.out.println("Checking " + invStack.getHoverName().getString() + " | Identified Slot: " + (invSlot != null ? invSlot.getName() : "NONE") + " | Target Slot: " + slot.getName());
+
+                if (invSlot == slot) {
+                    double invArmorValue = calculateArmorValue(invStack, slot);
+                    
+                    if (invArmorValue > bestInvArmorValue) {
+                        bestInvArmorValue = invArmorValue;
+                        bestInvIndex = i;
+                    }
+                }
+            }
+
+            // POINTER: Swap logic for full inventories.
+            if (bestInvIndex != -1) {
+                ItemStack betterArmor = inventory.getItem(bestInvIndex);
+                
+                // DEBUG: Print to server console to confirm the logic is actually firing!
+                System.out.println("KingdomVillager equipping " + betterArmor.getHoverName().getString() + " in " + slot.getName());
+
+                // 1:1 Swap
+                inventory.setItem(bestInvIndex, currentEquipped.copy());
+                this.setItemSlot(slot, betterArmor.copy());
+                
+                // POINTER: Ensure the villager actually drops the armor upon death
+                this.setDropChance(slot, 2.0f); 
+                
+                if (betterArmor.getItem() instanceof net.minecraft.world.item.Equipable equipable) {
+                    this.playSound(equipable.getEquipSound().value(), 1.0F, 1.0F);
+                } else {
+                    this.playSound(net.minecraft.sounds.SoundEvents.ARMOR_EQUIP_GENERIC.value(), 1.0F, 1.0F);
+                }
+            }
+        }
+    }
+
+    private double calculateArmorValue(ItemStack stack, EquipmentSlot slot) {
+        if (stack.isEmpty()) return 0.0;
+
+        double baseArmor = 0.0;
+        double armorToughness = 0.0;
+
+        // POINTER: In 1.21.1, check the stack's explicit modifiers first. 
+        // If empty (standard for un-modified vanilla items), fall back to the base Item's default components.
+        net.minecraft.world.item.component.ItemAttributeModifiers modifiers = stack.get(net.minecraft.core.component.DataComponents.ATTRIBUTE_MODIFIERS);
+        
+        if (modifiers == null || modifiers.modifiers().isEmpty()) {
+            modifiers = stack.getItem().components().getOrDefault(
+                net.minecraft.core.component.DataComponents.ATTRIBUTE_MODIFIERS, 
+                net.minecraft.world.item.component.ItemAttributeModifiers.EMPTY
+            );
+        }
+
+        for (net.minecraft.world.item.component.ItemAttributeModifiers.Entry mod : modifiers.modifiers()) {
+            // POINTER: In 1.21.1, slot.test() uses EquipmentSlotGroup. Ensure the target slot is valid for this modifier.
+            if (mod.slot().test(slot)) {
+                String attrName = mod.attribute().unwrapKey().map(key -> key.location().getPath()).orElse("");
+                
+                if (attrName.equals("armor")) {
+                    baseArmor += mod.modifier().amount();
+                } else if (attrName.equals("armor_toughness")) {
+                    armorToughness += mod.modifier().amount();
+                }
+            }
+        }
+
+        // POINTER: 1.21.1 streamlines enchantments into a Data Component as well.
+        int protection = 0;
+        if (this.level() != null && this.level().registryAccess() != null) {
+            try {
+                net.minecraft.world.item.enchantment.ItemEnchantments enchantments = stack.getOrDefault(
+                    net.minecraft.core.component.DataComponents.ENCHANTMENTS, 
+                    net.minecraft.world.item.enchantment.ItemEnchantments.EMPTY
+                );
+                
+                var enchRegistry = this.level().registryAccess().registryOrThrow(net.minecraft.core.registries.Registries.ENCHANTMENT);
+                var protectionHolder = enchRegistry.getHolderOrThrow(net.minecraft.world.item.enchantment.Enchantments.PROTECTION);
+                
+                // Get the level of protection directly from the component
+                protection = enchantments.getLevel(protectionHolder);
+            } catch (Exception e) {
+                // Ignore gracefully if registries are temporarily unavailable
+            }
+        }
+
+        return baseArmor * 1.0 + armorToughness * 2.0 + (protection * 1.5);
     }
 
     @Override
@@ -193,8 +324,7 @@ public class KingdomVillagerEntity extends Villager {
             }
         }
         
-        // POINTER: Force MAINHAND equipment to drop by overriding its normal drop chance check,
-        // since we want the villager's tool/weapon to always be recoverable on death.
+        // POINTER: Ensure MAINHAND is dropped natively or via manual drop if drop chance wasn't set.
         ItemStack mainHandStack = this.getItemBySlot(EquipmentSlot.MAINHAND);
         if (!mainHandStack.isEmpty()) {
             this.spawnAtLocation(mainHandStack.copy());
