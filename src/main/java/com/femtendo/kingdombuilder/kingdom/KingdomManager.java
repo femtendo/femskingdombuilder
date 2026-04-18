@@ -96,7 +96,7 @@ public class KingdomManager extends SavedData {
     private static SavedData.Factory<KingdomManager> factory() {
         return new SavedData.Factory<>(
                 KingdomManager::new,
-                (tag, lookup) -> KingdomManager.load(tag),
+                KingdomManager::load,
                 null
         );
     }
@@ -204,17 +204,16 @@ public class KingdomManager extends SavedData {
     /**
      * Forge 1.21.1 SavedData#save signature: {@code (CompoundTag, HolderLookup.Provider)}.
      *
-     * POINTER: We don't consume the {@link HolderLookup.Provider} because none
-     * of our persisted data references holder-backed registries (no
-     * BlockStates, no ItemStacks here). If/when a future field DOES reference
-     * a registry holder (e.g. caching a Block or Item), pass {@code lookup}
-     * down to the appropriate codec.
+     * POINTER (System 4 update): Lookup IS now forwarded to
+     * {@link KingdomData#save} because the per-kingdom vault contains
+     * ItemStacks whose codec-backed (de)serialization needs registry access.
+     * Before System 4, this lookup was discarded; we now plumb it through.
      */
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider lookup) {
         ListTag list = new ListTag();
         for (KingdomData data : kingdomsByOwner.values()) {
-            list.add(data.save(new CompoundTag()));
+            list.add(data.save(new CompoundTag(), lookup));
         }
         tag.put(KEY_KINGDOMS, list);
         return tag;
@@ -235,12 +234,14 @@ public class KingdomManager extends SavedData {
      * registry; an op can rebuild via the planned {@code /kingdom abandon} +
      * re-claim flow (System 13).
      */
-    public static KingdomManager load(CompoundTag tag) {
+    public static KingdomManager load(CompoundTag tag, HolderLookup.Provider lookup) {
         KingdomManager manager = new KingdomManager();
         ListTag list = tag.getList(KEY_KINGDOMS, Tag.TAG_COMPOUND);
         for (int i = 0; i < list.size(); i++) {
             CompoundTag entry = list.getCompound(i);
-            KingdomData data = KingdomData.load(entry);
+            // POINTER (System 4): lookup is forwarded for vault ItemStack
+            // deserialization. Missing vault tags are tolerated by KingdomData.
+            KingdomData data = KingdomData.load(entry, lookup);
             if (data == null) {
                 LOGGER.warn("[KingdomManager] Skipping malformed kingdom entry at index {} in {}", i, DATA_NAME);
                 continue;

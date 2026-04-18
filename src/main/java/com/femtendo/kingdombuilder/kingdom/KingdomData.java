@@ -3,8 +3,12 @@ package com.femtendo.kingdombuilder.kingdom;
 import java.util.UUID;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtUtils;
+import net.minecraft.world.ContainerHelper;
+import net.minecraft.world.item.ItemStack;
 
 /**
  * Plain-Old-Java-Object data carrier representing a single player's kingdom.
@@ -37,6 +41,23 @@ public class KingdomData {
     private static final String KEY_CORE_POS = "corePos";
     private static final String KEY_DIMENSION = "dimensionKey";
     private static final String KEY_NAME = "kingdomName";
+    private static final String KEY_VAULT = "vault";
+
+    /**
+     * Size of the per-kingdom vault backing store (System 4).
+     *
+     * POINTER: 10000 slots per the issue spec. Empty slots serialize to nothing
+     * via {@link ContainerHelper#saveAllItems} so on-disk cost is proportional
+     * to occupied slots, not VAULT_SIZE. The backing {@link NonNullList} does
+     * hold 10000 {@code ItemStack.EMPTY} references in RAM — that's ~80 KB per
+     * kingdom on a 64-bit JVM, negligible compared to chunk state.
+     *
+     * POINTER: Referenced by
+     * {@link com.femtendo.kingdombuilder.capability.KingdomVaultItemHandler} as
+     * its slot count. Do NOT change this value without a save migration — the
+     * slot index of each stored stack is the key on disk.
+     */
+    public static final int VAULT_SIZE = 10000;
 
     // POINTER: ownerUUID is the *immutable* identity of a kingdom. There is no
     // setter on purpose — re-assigning a kingdom to a different player would
@@ -63,6 +84,24 @@ public class KingdomData {
 
     // Display name shown in HUDs, name-tags, and chat messages. Mutable.
     private String kingdomName;
+
+    /**
+     * Backing store for the kingdom vault (System 4). Exposed to the tech-mod
+     * world as an {@link net.minecraftforge.items.IItemHandler} via
+     * {@link com.femtendo.kingdombuilder.capability.KingdomVaultItemHandler}
+     * attached to every Logistics Node BE in the kingdom's dimension.
+     *
+     * POINTER: The handler holds a DIRECT reference to this list — it mutates
+     * the list in place on insert. This is intentional (no copy-on-write), so
+     * multiple Logistics Nodes in the same kingdom share one authoritative
+     * vault. Any code mutating this list MUST route through
+     * {@code KingdomVaultItemHandler} so we go through a consistent
+     * {@link KingdomManager#setDirty()} call.
+     *
+     * POINTER: Not final — re-assigned during {@link #load} to swap in the
+     * deserialized list.
+     */
+    private NonNullList<ItemStack> vaultItems = NonNullList.withSize(VAULT_SIZE, ItemStack.EMPTY);
 
     public KingdomData(UUID ownerUUID, BlockPos corePos, String dimensionKey, String kingdomName) {
         // Defensive copy of BlockPos: BlockPos.MutableBlockPos is a subclass and
@@ -105,6 +144,20 @@ public class KingdomData {
         this.kingdomName = kingdomName;
     }
 
+    /**
+     * Live reference to the vault backing store (System 4).
+     *
+     * POINTER: Returned reference is NOT copied — callers must not mutate it
+     * outside of {@link com.femtendo.kingdombuilder.capability.KingdomVaultItemHandler}.
+     * We expose it directly so the handler can implement O(1) slot lookups;
+     * wrapping in {@code unmodifiableList} would force a copy on every
+     * handler-instance construction (one per Logistics Node BE, potentially
+     * hundreds per kingdom).
+     */
+    public NonNullList<ItemStack> getVaultItems() {
+        return vaultItems;
+    }
+
     // --- NBT (de)serialization --------------------------------------------
 
     /**
@@ -121,12 +174,32 @@ public class KingdomData {
      * NOT merged into the parent compound. Reading back uses
      * {@link NbtUtils#readBlockPos(CompoundTag, String)} which returns
      * {@code Optional<BlockPos>}.
+     *
+     * POINTER (System 4): {@link HolderLookup.Provider} is required for
+     * ItemStack (de)serialization in 1.21.1 because ItemStack now uses
+     * codec-backed NBT that can reference registry holders (enchantments,
+     * block components, etc.). It is forwarded from
+     * {@link KingdomManager#save(CompoundTag, HolderLookup.Provider)} which
+     * receives it from vanilla's SavedData pipeline.
      */
-    public CompoundTag save(CompoundTag tag) {
+    public CompoundTag save(CompoundTag tag, HolderLookup.Provider lookup) {
         tag.putUUID(KEY_OWNER_UUID, ownerUUID);
         tag.put(KEY_CORE_POS, NbtUtils.writeBlockPos(corePos));
         tag.putString(KEY_DIMENSION, dimensionKey);
         tag.putString(KEY_NAME, kingdomName);
+
+        // POINTER (System 4): Vault items serialize via ContainerHelper which
+        // skips empty slots — so a mostly-empty 10k-slot vault costs only a few
+        // bytes on disk. ContainerHelper#saveAllItems takes a HolderLookup.Provider
+        // because ItemStack serialization in 1.21.1 is codec-backed and needs
+        // registry access (components may reference block/item/enchant holders).
+        // If lookup is null (shouldn't happen from SavedData), we skip vault
+        // persistence to avoid crashing the whole save.
+        if (lookup != null) {
+            CompoundTag vaultTag = new CompoundTag();
+            ContainerHelper.saveAllItems(vaultTag, vaultItems, lookup);
+            tag.put(KEY_VAULT, vaultTag);
+        }
         return tag;
     }
 
@@ -150,7 +223,7 @@ public class KingdomData {
      *  - Missing kingdomName → default to "Kingdom of " + first 8 chars of UUID
      *    so the player still has *something* to see.
      */
-    public static KingdomData load(CompoundTag tag) {
+    public static KingdomData load(CompoundTag tag, HolderLookup.Provider lookup) {
         if (!tag.hasUUID(KEY_OWNER_UUID)) {
             return null;
         }
@@ -169,6 +242,17 @@ public class KingdomData {
                 ? tag.getString(KEY_NAME)
                 : "Kingdom of " + ownerUUID.toString().substring(0, 8);
 
-        return new KingdomData(ownerUUID, corePos, dimensionKey, kingdomName);
+        KingdomData data = new KingdomData(ownerUUID, corePos, dimensionKey, kingdomName);
+
+        // POINTER (System 4): Vault items load into the already-constructed
+        // NonNullList (ContainerHelper#loadAllItems mutates in place). A missing
+        // KEY_VAULT tag is expected for legacy saves from before System 4 —
+        // just leave the default all-empty list. Null lookup also skips the
+        // load (defensive; SavedData always provides one).
+        if (lookup != null && tag.contains(KEY_VAULT)) {
+            ContainerHelper.loadAllItems(tag.getCompound(KEY_VAULT), data.vaultItems, lookup);
+        }
+
+        return data;
     }
 }

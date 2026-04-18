@@ -42,11 +42,18 @@ public class ModBlocks {
                     .mapColor(MapColor.COLOR_ORANGE)
                     .strength(3.5F, 6.0F)));
 
-    // POINTER: LOGISTICS_NODE — kingdom vault access point (System 4). Will expose an
+    // POINTER: LOGISTICS_NODE — kingdom vault access point (System 4). Exposes an
     // IItemHandler capability via its BlockEntity. Stone-tier hardness (2.0F) keeps it
     // destructible so rivals can sabotage a poorly-defended logistics network.
+    //
+    // POINTER (System 4 — completed): The supplier now instantiates
+    // {@link LogisticsNodeBlock} (extends BaseEntityBlock). It overrides
+    // newBlockEntity() so placing one in-world spawns the matching
+    // LogisticsNodeBlockEntity, which is where the capability proxy lives.
+    // RenderShape.MODEL is forced in the subclass so the JSON model renders
+    // (BaseEntityBlock defaults to INVISIBLE).
     public static final RegistryObject<Block> LOGISTICS_NODE = BLOCKS.register("logistics_node",
-            () -> new Block(BlockBehaviour.Properties.of()
+            () -> new LogisticsNodeBlock(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.METAL)
                     .strength(2.0F)));
 
