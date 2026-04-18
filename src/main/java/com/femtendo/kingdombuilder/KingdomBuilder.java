@@ -79,6 +79,16 @@ public class KingdomBuilder {
         if(event.getTabKey() == CreativeModeTabs.SPAWN_EGGS) {
             event.accept(ModItems.KINGDOM_VILLAGER_SPAWN_EGG);
         }
+        // POINTER (System 11): Register the Zoning Tool and Wrench into the
+        // TOOLS_AND_UTILITIES creative tab so playtesters can find them without
+        // /give commands. TOOLS_AND_UTILITIES is the 1.21.1 canonical tab for
+        // utility items (matches where vanilla places shears, compass, etc.).
+        // If we later add a dedicated "Kingdom Builder" tab, move these there
+        // and drop this branch.
+        if (event.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES) {
+            event.accept(ModItems.ZONING_TOOL);
+            event.accept(ModItems.WRENCH);
+        }
     }
 
     public void entityAttributeEvent(EntityAttributeCreationEvent event) {

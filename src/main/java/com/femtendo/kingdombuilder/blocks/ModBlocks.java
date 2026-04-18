@@ -69,8 +69,15 @@ public class ModBlocks {
     // transparent blocks, the X-ray BER would z-fight the opaque cube fallback, and
     // facades applied via the Wrench wouldn't show through. Strength 1.5F matches
     // iron bars — easy to reconfigure, hard to grief en masse.
+    //
+    // POINTER (System 11 — completed): Supplier now instantiates {@link IronTubeBlock}
+    // (extends BaseEntityBlock) so placing one spawns IronTubeBlockEntity. System 11
+    // promoted this swap early because the Wrench's click-to-toggle acceptance criterion
+    // requires the BE to exist at the clicked position. System 8 should extend
+    // IronTubeBlockEntity with connectedFaces + facades and register the X-ray BER,
+    // but must NOT redo this block-class swap.
     public static final RegistryObject<Block> IRON_TUBE = BLOCKS.register("iron_tube",
-            () -> new Block(BlockBehaviour.Properties.of()
+            () -> new IronTubeBlock(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.METAL)
                     .strength(1.5F)
                     .noOcclusion()));

@@ -2,6 +2,8 @@ package com.femtendo.kingdombuilder.blueprint;
 
 import java.util.UUID;
 
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtUtils;
@@ -50,6 +52,14 @@ public class ZoneData {
     private static final String KEY_BLUEPRINT_ID = "blueprintId";
     private static final String KEY_COMPLETED = "completed";
     private static final String KEY_INTEGRITY = "integrityState";
+    // POINTER (System 11 / System 12): upgradeFrom is the UUID of the zone being
+    // upgraded over (housing tier 1 → 2 flow). Nullable — most zones are built
+    // from scratch. Added in System 11 to satisfy the Zoning Tool's "Right-click
+    // on existing completed zone → upgrade flow" spec; System 12 owns the full
+    // tier-validation + deconstruction ladder and may decorate ZoneData further
+    // (tier level, influence points, etc.). Keep this field nullable and absent
+    // from NBT when null so legacy saves still load cleanly.
+    private static final String KEY_UPGRADE_FROM = "upgradeFrom";
 
     /**
      * Tri-state integrity ladder maintained by
@@ -112,6 +122,17 @@ public class ZoneData {
     // treated as COMPLETE-until-damaged once they finish building.
     private ZoneIntegrityState integrityState;
 
+    // POINTER (System 11): Nullable pointer back to the zone this one is
+    // replacing. Set by the Zoning Tool when the player right-clicks on an
+    // existing completed zone while holding a higher-tier blueprint. Builder
+    // NPCs (System 10) should deconstruct the old zone's blocks before
+    // rasterizing this one. On completion, System 12's upgrade flow calls
+    // {@code BlueprintRegistry.removeZone(upgradeFrom)} to drop the old record.
+    // Null for from-scratch placements — which is the vast majority — so we
+    // write it only when non-null to keep legacy saves readable.
+    @Nullable
+    private UUID upgradeFrom;
+
     /**
      * Primary constructor used by the Zoning Tool flow when a new zone is
      * placed in the world.
@@ -128,6 +149,25 @@ public class ZoneData {
                     String blueprintId,
                     boolean completed,
                     ZoneIntegrityState integrityState) {
+        this(zoneId, kingdomOwnerUUID, minPos, maxPos, blueprintId, completed, integrityState, null);
+    }
+
+    /**
+     * Full-arity constructor including the optional {@link #upgradeFrom} linkage
+     * introduced by System 11 for the housing-upgrade flow. Callers that need
+     * to set the upgrade pointer during creation (the Zoning Tool right-click-
+     * on-existing-zone path) should use this constructor; everyone else should
+     * keep using the shorter overload above and let {@code upgradeFrom} default
+     * to {@code null}.
+     */
+    public ZoneData(UUID zoneId,
+                    UUID kingdomOwnerUUID,
+                    BlockPos minPos,
+                    BlockPos maxPos,
+                    String blueprintId,
+                    boolean completed,
+                    ZoneIntegrityState integrityState,
+                    @Nullable UUID upgradeFrom) {
         this.zoneId = zoneId;
         this.kingdomOwnerUUID = kingdomOwnerUUID;
         // Defensive immutable() copies — see KingdomData ctor for rationale.
@@ -136,6 +176,7 @@ public class ZoneData {
         this.blueprintId = blueprintId;
         this.completed = completed;
         this.integrityState = integrityState;
+        this.upgradeFrom = upgradeFrom;
     }
 
     /**
@@ -183,6 +224,21 @@ public class ZoneData {
 
     public ZoneIntegrityState getIntegrityState() {
         return integrityState;
+    }
+
+    /**
+     * POINTER (System 11): Returns the zoneId of the zone being upgraded over,
+     * or {@code null} for from-scratch zones. System 12's upgrade-completion
+     * handler uses this to identify + remove the legacy zone once the new
+     * tier finishes construction.
+     */
+    @Nullable
+    public UUID getUpgradeFrom() {
+        return upgradeFrom;
+    }
+
+    public void setUpgradeFrom(@Nullable UUID upgradeFrom) {
+        this.upgradeFrom = upgradeFrom;
     }
 
     // --- Setters (mutators MUST be paired with BlueprintRegistry#setDirty) --
@@ -259,6 +315,12 @@ public class ZoneData {
         tag.putString(KEY_BLUEPRINT_ID, blueprintId == null ? "" : blueprintId);
         tag.putBoolean(KEY_COMPLETED, completed);
         tag.putString(KEY_INTEGRITY, integrityState.name());
+        // POINTER (System 11): Only write upgradeFrom when non-null so pre-System 11
+        // saves stay structurally identical and {@link #load} doesn't need a
+        // schema-version bump. ZoneData#load only reads the key when present.
+        if (upgradeFrom != null) {
+            tag.putUUID(KEY_UPGRADE_FROM, upgradeFrom);
+        }
         return tag;
     }
 
@@ -308,6 +370,12 @@ public class ZoneData {
             }
         }
 
-        return new ZoneData(zoneId, ownerUUID, minPos, maxPos, blueprintId, completed, integrity);
+        // POINTER (System 11): upgradeFrom defaults to null when absent — the
+        // key was introduced after System 5 shipped, so existing saves will not
+        // contain it. {@code hasUUID} returns false for both a missing key and
+        // a malformed value; either way we leave the pointer unset.
+        UUID upgradeFrom = tag.hasUUID(KEY_UPGRADE_FROM) ? tag.getUUID(KEY_UPGRADE_FROM) : null;
+
+        return new ZoneData(zoneId, ownerUUID, minPos, maxPos, blueprintId, completed, integrity, upgradeFrom);
     }
 }
