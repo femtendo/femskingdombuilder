@@ -47,6 +47,12 @@ public class KingdomBuilder {
         com.femtendo.kingdombuilder.inventory.ModMenus.register(modEventBus);
 
         MinecraftForge.EVENT_BUS.register(this);
+        // POINTER (System 6): Explicitly register KingdomBlockEvents on the FORGE
+        // bus per the architecture plan. The class also carries
+        // @Mod.EventBusSubscriber so this call is idempotent; keeping it here
+        // makes the wiring visible alongside other event-bus registrations and
+        // survives any future refactor that drops the annotation.
+        MinecraftForge.EVENT_BUS.register(com.femtendo.kingdombuilder.events.KingdomBlockEvents.class);
 
         modEventBus.addListener(this::addCreative);
 
