@@ -396,6 +396,7 @@ A Brigadier-based command tree registered under `/kingdom` giving developers, se
 | 2026-04-17 | Exec Agent | System 6: Kingdom Block Events (Zone Integrity) | See entry below. |
 | 2026-04-17 | Exec Agent | System 7: Hologram Renderer (Client Blueprint Preview) | See entry below. |
 | 2026-04-17 | Exec Agent | System 11: Items — Zoning Tool & Wrench | See entry below. |
+| 2026-04-18 | Exec Agent | Hologram Crash Fix (`@OnlyIn` + `@EventBusSubscriber` conflict) | See entry below. |
 
 ---
 
@@ -621,3 +622,20 @@ A Brigadier-based command tree registered under `/kingdom` giving developers, se
   - `src/main/java/com/femtendo/kingdombuilder/items/ModItems.java` (modified — added registrations)
   - `src/main/java/com/femtendo/kingdombuilder/blocks/ModBlocks.java` (modified — IRON_TUBE supplier swap)
   - `src/main/java/com/femtendo/kingdombuilder/KingdomBuilder.java` (modified — addCreative branch)
+
+---
+
+### Hologram Crash Fix (`@OnlyIn` + `@EventBusSubscriber` conflict) — Completed by Exec Agent
+
+**Summary:** Removed `@OnlyIn(Dist.CLIENT)` from `HologramRenderer` and its import. The mod was failing to load at construct time with `java.lang.RuntimeException: Found @OnlyIn on @EventBusSubscriber class com.femtendo.kingdombuilder.client.renderer.HologramRenderer - this is not allowed as it causes crashes. Remove the OnlyIn and set value=Dist.CLIENT in the EventBusSubscriber annotation instead`, thrown by `net.minecraftforge.fml.javafmlmod.AutomaticEventSubscriber.inject`. The `@Mod.EventBusSubscriber(modid = MODID, value = Dist.CLIENT)` annotation already gates registration to the client dist, so the extra `@OnlyIn` was redundant and — in Forge 52.x — actively forbidden. Left a prominent class-level `// POINTER (Forge 52.x crash guard)` comment documenting the constraint so a future agent doesn't "helpfully" re-add the annotation.
+
+**Technical Notes/Hurdles:**
+- **Reproduction.** Built cleanly (`./gradlew compileJava` BUILD SUCCESSFUL) but `./gradlew runClient` surfaced `Mod Loading has failed` during `FMLModContainer.constructMod`. The root cause only appears in the detail section of the generated `crash-reports/crash-*.txt`, NOT in the short stack trace at the top — future debuggers should scroll to the `-- MOD kingdombuilder --` block to see the actual `Failure message` / `Exception message` fields.
+- **Why Forge 52.x forbids this combination.** `@OnlyIn(Dist.CLIENT)` triggers the `runtimedistcleaner` ASM transformer, which *strips the annotated class entirely* when the opposite dist loads. But the `@Mod.EventBusSubscriber` discovery pass (`AutomaticEventSubscriber.inject`) scans every class in the mod jar regardless of dist and inspects annotations via reflection. With both annotations present, Forge conservatively rejects the class at inject time because the outcome on a dedicated server would be a `ClassNotFoundException` when it tries to register handlers on a class that dist-cleaner has removed. `value = Dist.CLIENT` on the subscriber annotation is the sanctioned replacement: it tells Forge *not to scan* this class on non-client dists, avoiding the conflict.
+- **No behavioural change on the client.** The handler (`onRenderLevelStage`) still only runs on clients because the subscriber itself is still dist-gated. Dedicated-server jars will not classload `HologramRenderer` because no non-client code references it (verified: `grep -r HologramRenderer src/main/java` shows only self-references plus the intended System 11 Zoning Tool callsite, and the Zoning Tool's client-side call is already wrapped in a client-side guard).
+- **Verified via** `./gradlew compileJava` → BUILD SUCCESSFUL with no new warnings.
+
+**Next Agent Pointers:**
+- **DO NOT re-add `@OnlyIn(Dist.CLIENT)` to any `@Mod.EventBusSubscriber`-annotated class.** If you see an agent's PR re-introducing it, reject the diff — Forge 52.x will crash mod load as demonstrated above. The sanctioned pattern is `@Mod.EventBusSubscriber(modid = MODID, value = Dist.CLIENT)` alone; the `value` field is Forge's approved dist gate for subscriber classes. Individual methods or non-subscriber fields inside the class CAN still use `@OnlyIn` if they reference client-only types in signatures — only the class-level combination is forbidden.
+- **Pattern applies to any future client-only `@EventBusSubscriber`.** System 8's `IronTubeRenderer`, System 10's `KingdomRenderEvents`, and any future S2C packet handler registered as a subscriber class must follow the same rule. Prefer `@Mod.EventBusSubscriber(value = Dist.CLIENT)` without `@OnlyIn` at the class level.
+- **File touched:** `src/main/java/com/femtendo/kingdombuilder/client/renderer/HologramRenderer.java` (removed `@OnlyIn` annotation + unused `OnlyIn` import; added class-level pointer comment).

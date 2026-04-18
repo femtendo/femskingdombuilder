@@ -12,7 +12,6 @@ import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.client.event.RenderLevelStageEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -67,7 +66,16 @@ import java.util.UUID;
  * would otherwise be invisible — and we want these to read as "UI overlay on the world",
  * not "a block the world has placed that can be lit/shadowed".
  */
-@OnlyIn(Dist.CLIENT)
+// POINTER (Forge 52.x crash guard): Do NOT re-add @OnlyIn(Dist.CLIENT) to this class.
+// Forge's AutomaticEventSubscriber.inject() throws at mod-construct time with
+// "Found @OnlyIn on @EventBusSubscriber class ... - this is not allowed as it causes
+// crashes. Remove the OnlyIn and set value=Dist.CLIENT in the EventBusSubscriber
+// annotation instead." The dist gate on @Mod.EventBusSubscriber(value = Dist.CLIENT)
+// already achieves the same "client-only classloading" guarantee — the handler is
+// only registered on the client, and the class is only referenced from client-side
+// call sites (S2C packet receiver, Zoning Tool client handler). Public static API
+// callers that might accidentally load this on the dedicated server should funnel
+// through a DistExecutor.unsafeRunWhenOn(Dist.CLIENT, ...) wrapper on their end.
 @Mod.EventBusSubscriber(modid = KingdomBuilder.MODID, value = Dist.CLIENT)
 public final class HologramRenderer {
 
