@@ -29,11 +29,16 @@ public class ModBlocks {
 
     // POINTER: SETTLEMENT_HEARTH — kingdom-claim "core" block (System 3). Explosion
     // resistance 6.0F matches stone so a creeper can't trivially erase a kingdom core;
-    // destroy time 3.5F is deliberately non-trivial. Registered as a plain Block here
-    // so System 1 stays registry-only; System 3 swaps the supplier to
-    // `new SettlementHearthBlock(...)` extending BaseEntityBlock.
+    // destroy time 3.5F is deliberately non-trivial.
+    //
+    // POINTER (System 3 — completed): the supplier now instantiates
+    // {@link SettlementHearthBlock} (extends BaseEntityBlock). It overrides
+    // newBlockEntity() so placing one in-world spawns the matching
+    // SettlementHearthBlockEntity. RenderShape.MODEL is forced in the subclass
+    // so the JSON block model renders normally (BaseEntityBlock's default is
+    // INVISIBLE which would leave a hole).
     public static final RegistryObject<Block> SETTLEMENT_HEARTH = BLOCKS.register("settlement_hearth",
-            () -> new Block(BlockBehaviour.Properties.of()
+            () -> new SettlementHearthBlock(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.COLOR_ORANGE)
                     .strength(3.5F, 6.0F)));
 
