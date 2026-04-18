@@ -388,4 +388,26 @@ A Brigadier-based command tree registered under `/kingdom` giving developers, se
 
 | Date | Agent | Issue | Notes |
 |------|-------|-------|-------|
-| — | — | — | No tasks started yet. |
+| 2026-04-17 | Exec Agent | System 1: Block & BlockEntity Registries | See entry below. |
+
+---
+
+### System 1: Block & BlockEntity Registries — Completed by Exec Agent
+
+**Summary:** Created the `blocks/` and `blockentities/` packages with `ModBlocks` (5 blocks: `SETTLEMENT_HEARTH`, `LOGISTICS_NODE`, `KINGDOM_SILO`, `IRON_TUBE`, `KINGDOM_SCAFFOLD`) and `ModBlockEntities` (4 BE types). Added 4 stub `BlockEntity` subclasses (`SettlementHearthBlockEntity`, `LogisticsNodeBlockEntity`, `KingdomSiloBlockEntity`, `IronTubeBlockEntity`) with minimal `(BlockPos, BlockState)` constructors. Wired both `DeferredRegister`s into `KingdomBuilder`'s constructor between the existing `ModItems` and `ModMenus` registrations.
+
+**Technical Notes/Hurdles:**
+- Touching the main mod class exposed a pre-existing case-mismatch bug: the git-tracked file was `kingdombuilder.java` (lowercase) while the class inside is `public class KingdomBuilder`. macOS APFS is case-insensitive so this compiled silently before, but `./gradlew compileJava` now failed with "class KingdomBuilder is public, should be declared in a file named KingdomBuilder.java". Fixed by a two-step `git mv` (through a `.tmp` intermediate) to rename the file to `KingdomBuilder.java`. If future agents find references or imports to a lowercase path, update them — the canonical name is now `KingdomBuilder.java`.
+- Used `BlockBehaviour.Properties.of()` (no-arg, Forge 1.21.1 signature — no Material argument). `noLootTable()` + `destroyTime(0.0F)` + `noOcclusion()` are chained directly on the Properties builder; all three are load-bearing for scaffold (see inline comments in `ModBlocks.java` for why each matters separately).
+- `BlockEntityType.Builder.of(Constructor::new, block).build(null)` passes a null DataFixer type. This is standard Forge mod practice — we handle NBT migration ourselves in each BE's `load()` override if the schema ever changes.
+- The 5 blocks are currently plain `Block` instances, NOT `BaseEntityBlock`. This means placing one in-world will NOT spawn its corresponding BE; System 3 (Settlement Hearth), System 4 (Logistics Node), System 8 (Iron Tube), and System 9 (Silo) will each swap their supplier to a dedicated `BaseEntityBlock` subclass that overrides `newBlockEntity(pos, state)`. Acceptance criteria was "mod loads without crash; all five blocks and four BE types are accessible via `.get()`" — verified by successful `./gradlew build`.
+- Kept code comments but did NOT add loot tables, block-states, models, item-block registrations, or creative-tab entries. Those are out of scope for System 1 per the issue description; separate tickets will cover assets.
+
+**Next Agent Pointers:**
+- **System 3 (Settlement Hearth):** Replace the `() -> new Block(...)` supplier for `SETTLEMENT_HEARTH` in `ModBlocks.java` with `() -> new SettlementHearthBlock(...)` that extends `BaseEntityBlock`, implements `EntityBlock`, and overrides `newBlockEntity(pos, state)` to return `new SettlementHearthBlockEntity(pos, state)`. Then flesh out `SettlementHearthBlockEntity` (currently a stub) with ownerUUID + addAdditionalSaveData / readAdditionalSaveData.
+- **System 4 (Logistics Node):** Same swap for `LOGISTICS_NODE`. Override `getCapability(...)` in `LogisticsNodeBlockEntity` and wire a `LazyOptional<KingdomVaultItemHandler>`. Don't forget `vaultCapability.invalidate()` in `setRemoved()` — I left a POINTER comment in the stub class.
+- **System 8 (Iron Tube):** `IronTubeBlockEntity` stub is ready. Remember `level.sendBlockUpdated(...)` on facade mutations (not `setChanged()`), and the `noOcclusion()` flag on `IRON_TUBE` in `ModBlocks.java` is already set up for the X-ray BER + facade rendering to work.
+- **System 9 (Silo):** Attach `SiloItemHandler` as an ITEM_HANDLER capability in `KingdomSiloBlockEntity`.
+- **Item-block registrations:** When creative-tab / BlockItem wiring is introduced, register `new BlockItem(ModBlocks.X.get(), new Item.Properties())` under `ModItems.ITEMS` using the same `"settlement_hearth"` etc. names so resource locations align.
+- **Lookup pattern:** `ModBlocks.SETTLEMENT_HEARTH.get()` and `ModBlockEntities.SETTLEMENT_HEARTH_BE.get()` are the supported access points. The DeferredRegister flush order is `BLOCKS` then `BLOCK_ENTITY_TYPES` (Forge resolves registries in dependency order), so `.get()` on a block from within a BE supplier is safe.
+- **Filename case:** `KingdomBuilder.java` is now the canonical main-class file name — do not reintroduce the lowercase variant.

@@ -38,6 +38,12 @@ public class KingdomBuilder {
 
         ModEntities.register(modEventBus);
         ModItems.register(modEventBus);
+        // POINTER: ModBlocks must register BEFORE ModBlockEntities so that
+        // BlockEntityType.Builder.of(..., ModBlocks.X.get()) resolves successfully
+        // when the BLOCK_ENTITY_TYPES DeferredRegister flushes. See System 1 of
+        // kingdom_builder_architecture_plan.md for the registry contract.
+        com.femtendo.kingdombuilder.blocks.ModBlocks.register(modEventBus);
+        com.femtendo.kingdombuilder.blockentities.ModBlockEntities.register(modEventBus);
         com.femtendo.kingdombuilder.inventory.ModMenus.register(modEventBus);
 
         MinecraftForge.EVENT_BUS.register(this);
