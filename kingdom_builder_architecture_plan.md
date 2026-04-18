@@ -389,6 +389,7 @@ A Brigadier-based command tree registered under `/kingdom` giving developers, se
 | Date | Agent | Issue | Notes |
 |------|-------|-------|-------|
 | 2026-04-17 | Exec Agent | System 1: Block & BlockEntity Registries | See entry below. |
+| 2026-04-17 | Exec Agent | System 2: Kingdom Data Layer (KingdomData + KingdomManager) | See entry below. |
 
 ---
 
@@ -411,3 +412,26 @@ A Brigadier-based command tree registered under `/kingdom` giving developers, se
 - **Item-block registrations:** When creative-tab / BlockItem wiring is introduced, register `new BlockItem(ModBlocks.X.get(), new Item.Properties())` under `ModItems.ITEMS` using the same `"settlement_hearth"` etc. names so resource locations align.
 - **Lookup pattern:** `ModBlocks.SETTLEMENT_HEARTH.get()` and `ModBlockEntities.SETTLEMENT_HEARTH_BE.get()` are the supported access points. The DeferredRegister flush order is `BLOCKS` then `BLOCK_ENTITY_TYPES` (Forge resolves registries in dependency order), so `.get()` on a block from within a BE supplier is safe.
 - **Filename case:** `KingdomBuilder.java` is now the canonical main-class file name — do not reintroduce the lowercase variant.
+
+---
+
+### System 2: Kingdom Data Layer (KingdomData + KingdomManager) — Completed by Exec Agent
+
+**Summary:** Created the `kingdom/` package with two new files. `KingdomData.java` is a POJO holding `ownerUUID` (final) / `corePos` / `dimensionKey` (final) / `kingdomName`, with `save(CompoundTag)` returning the same tag for fluent chaining and a static `load(CompoundTag)` that returns `null` on unrecoverable records. `KingdomManager.java` extends `SavedData` (DATA_NAME = `"kingdom_registry"`) and exposes the full public API from the issue spec: `claimKingdom` (returns `false` if the player UUID is already registered, satisfying the "one kingdom per player" acceptance criterion), `abandonKingdom`, `getKingdom(UUID)`, `getKingdomAtPos(BlockPos, String)`, `getAllKingdoms()` (unmodifiable view). Every mutator calls `setDirty()`. The static accessor `KingdomManager.get(ServerLevel)` deliberately forwards to `level.getServer().overworld().getDataStorage()` so all dimensions read/write the same registry — this is the actual mechanism that enforces the global one-kingdom-per-player invariant.
+
+**Technical Notes/Hurdles:**
+- **Forge 1.21.1 SavedData signature drift (vs. issue boilerplate):** The issue spec described `save(CompoundTag)` / `load(CompoundTag)` in 1.20-style. In 1.21.1, `SavedData#save(CompoundTag, HolderLookup.Provider)` is required and `SavedData.Factory<T>` is now a record `(Supplier<T>, BiFunction<CompoundTag, HolderLookup.Provider, T>, DataFixTypes)`. I implemented the new signature on the manager (and the `factory()` helper passes `null` for the `DataFixTypes` slot — vanilla's data-fixer pipeline knows nothing about mod-specific NBT). KingdomData kept the simpler `(CompoundTag) → CompoundTag` shape because it is NOT a SavedData; it is a value-typed entry inside the manager's map.
+- **`NbtUtils.writeBlockPos` / `readBlockPos` in 1.21.1:** `writeBlockPos(BlockPos)` returns a bare `Tag` (vanilla currently emits an `IntArrayTag`), and `readBlockPos(CompoundTag, String)` returns `Optional<BlockPos>`. The previous (pre-1.21) overload that took/returned a CompoundTag is gone. KingdomData uses the new overloads — see the inline POINTER block in `KingdomData#save`.
+- **TECH ALIGNMENT note from the issue ("prefer Data Components over NBT"):** Confirmed that the Data Components migration only applies to **item-tier code** (the upcoming Wrench / Zoning Tool in System 11). SavedData and BlockEntity persistence in 1.21.1 are still NBT-based; there is no Components-equivalent at the world-data layer. Inline pointer added to `KingdomData` so future agents don't try to "modernize" this code into Components.
+- **`getKingdomAtPos` is exact-pos equality, NOT territory containment.** Inline POINTER reminds the next agent that chunk/territory queries arrive in System 12 via the planned `getOwnerOfChunk(ChunkPos, String)` method. Linear scan is fine for the expected upper bound (~dozens of kingdoms); reverse-index TODO is noted in the comment.
+- **Defensive `BlockPos.immutable()` copies:** `BlockPos.MutableBlockPos` is a subclass and callers occasionally hand one in; storing the mutable instance would silently corrupt the registry if the caller later mutated it. Both the constructor and the `setCorePos` setter call `immutable()` defensively.
+- **`KingdomData` setters do NOT auto-mark the manager dirty.** I considered adding a back-reference from `KingdomData` → `KingdomManager` but rejected it: cycles complicate serialization and there is no practical case where an outside caller mutates a setter without also wanting to call `setDirty()` (the manager's own API methods do this for you). Documented as a class-level POINTER in both files.
+- Verified with `./gradlew compileJava` → `BUILD SUCCESSFUL`.
+
+**Next Agent Pointers:**
+- **System 3 (Settlement Hearth) is the immediate consumer.** `SettlementHearthBlock#use(...)` should pre-flight with `KingdomManager.get(serverLevel).getKingdomAtPos(blockPos, dimKey)` (rejects "this hearth is already someone's") and `getKingdom(playerUUID)` (rejects "you already own a kingdom") BEFORE calling `claimKingdom(...)`. The split is intentional — distinct error messages are easier with two checks than parsing a multi-state return code.
+- **Server-only API.** `KingdomManager.get(...)` requires a `ServerLevel`. From a generic `Level` callsite, guard with `if (!level.isClientSide() && level instanceof ServerLevel sl)` first. Client-side code should receive kingdom data via packets (System 7 / System 12 mention `S2CKingdomBorderPacket` for the territory overlay).
+- **Dimension key format.** Stored as the `String` form of `level.dimension().location().toString()` (e.g. `"minecraft:overworld"`). Use the same form when calling `getKingdomAtPos`.
+- **`abandonKingdom` does NOT cascade.** It only removes the registry entry. When System 3 wires kingdom destruction (hearth broken / player abandons), it must ALSO remove SettlementHearth blocks/BEs and (eventually) call `BlueprintRegistry.removeZonesForKingdom(uuid)` once System 5 lands. I left a POINTER comment in the method body flagging this for the next agent.
+- **System 12 extension fields.** When implementing dynamic territory expansion, add `cachedInfluenceScore` (int) and `claimedChunks` (`Set<ChunkPos>`, persisted as a `ListTag` of int-array `[x,z]` pairs) to `KingdomData`. The NBT key constants block at the top of `KingdomData` is the right spot to extend; remember to bump the `save`/`load` pair in lockstep.
+- **DataFixTypes slot is `null` today.** If we ever rev the kingdom registry schema, prefer hand-rolled migration inside `KingdomManager#load` (read a `version` int, branch on it) over registering a vanilla DataFixer — vanilla's pipeline is heavyweight for mod data.
